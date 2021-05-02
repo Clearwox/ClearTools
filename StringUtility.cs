@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -16,9 +17,12 @@ namespace Clear
         string GenerateFileName(string title, string fileExtension, string siteName);
         string GenerateTags(params string[] keys);
         string GenerateUrlKey(string txt);
+        string GenerateValidationCode(string input, DateTime expiryDate, int secretKey);
         string GetDateCode();
         string GetSubstring(string text, int startIndex);
         string GetSubstring(string text, int startIndex, int count);
+        //string ParseEditorJS(string content);
+        string ParseEditorJS(EditorJS.Content content);
         string StripHTML(string htmlstring);
         string StripSymbols(string xstring);
         string StripSymbolsAndHTML(string xstring);
@@ -123,6 +127,48 @@ namespace Clear
             }
 
             return StripHTML(text);
+        }
+
+        public string ParseEditorJSHeading(EditorJS.Data data)
+        {
+            return data.level switch
+            {
+                1 => $"<h{data.level}>{data.text}</h{data.level}>",
+                2 => $"<h{data.level}>{data.text}</h{data.level}>",
+                3 => $"<h{data.level}>{data.text}</h{data.level}>",
+                4 => $"<h{data.level}>{data.text}</h{data.level}>",
+                5 => $"<h{data.level}>{data.text}</h{data.level}>",
+                _ => ""
+            };
+        }
+        //public string ParseEditorJS(string content) => 
+        //    ParseEditorJS(JsonConvert.DeserializeObject<EditorJS.Content>(content));
+        public string ParseEditorJS(EditorJS.Content content)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            foreach (var itm in content.blocks)
+            {
+                builder.Append(itm.type switch
+                {
+                    "header" => ParseEditorJSHeading(itm.data),
+                    "paragraph" => $"<p>{itm.data.text}</p>",
+                    "list" => $"<{(itm.data.style == "unordered" ? "ul" : "ol")}>{string.Join("", itm.data.items.Select(x => $"<li>{x}</li>"))}</{(itm.data.style == "unordered" ? "ul" : "ol")}>",
+                    "image" => $"<img style=\"max-width: 100%;\" src=\"{itm.data.url}\" /><p>{itm.data.caption}</p>",
+                    _ => ""
+                });
+            }
+
+            return builder.ToString();
+        }
+        public string GenerateValidationCode(string input, DateTime expiryDate, int secretKey)
+        {
+            var code = input.ToCharArray().Sum(x => x) + expiryDate.ToFileTimeUtc() + secretKey;
+            code /= code.ToString().ToCharArray().Sum(x => x);
+            code /= code.ToString().ToCharArray().Sum(x => x);
+            code /= code.ToString().ToCharArray().Sum(x => x);
+            code /= code.ToString().ToCharArray().Sum(x => x);
+            return code.ToString();
         }
     }
 }
