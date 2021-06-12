@@ -17,7 +17,6 @@ namespace Clear
         string GenerateFileName(string title, string fileExtension, string siteName);
         string GenerateTags(params string[] keys);
         string GenerateUrlKey(string txt);
-        string GenerateValidationCode(string input, DateTime expiryDate, int secretKey);
         string GetDateCode();
         string GetSubstring(string text, int startIndex);
         string GetSubstring(string text, int startIndex, int count);
@@ -27,6 +26,8 @@ namespace Clear
         string StripSymbols(string xstring);
         string StripSymbolsAndHTML(string xstring);
         string TruncateString(string id);
+        string GenerateValidationCode(string input, DateTime expiryDate, int secretKey);
+        bool ValidationCode(string code, string input, DateTime expiryDate, int secretKey);
     }
     public class StringUtility : IStringUtility
     {
@@ -170,5 +171,8 @@ namespace Clear
             code /= code.ToString().ToCharArray().Sum(x => x);
             return code.ToString();
         }
+
+        public bool ValidationCode(string code, string input, DateTime expiryDate, int secretKey) =>
+            code == GenerateValidationCode(input, expiryDate, secretKey);
     }
 }

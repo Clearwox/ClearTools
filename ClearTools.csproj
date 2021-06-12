@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Authors>Clearwox Systems</Authors>
+    <Authors>Godwin Ehichoya</Authors>
     <Company>Clearwox Systems</Company>
     <Description>A set of general utilities suitable for any .net project. These utilities include, string, image, cryptography, http client, number base utility.</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -11,16 +11,8 @@
     <RepositoryUrl>https://github.com/Clearwox/ClearTools/</RepositoryUrl>
     <Copyright>Copyright 2018</Copyright>
     <PackageTags />
-    <Version>2.1.13</Version>
+    <Version>2.1.14</Version>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="docs\countries.csv" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="docs\countries.csv" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.1.7" />
