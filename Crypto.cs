@@ -51,9 +51,9 @@ namespace Clear
 
         public string DecodeSHA1(string Data)
         {
-            byte[] dEC_data = Convert.FromBase64String(Data);
-            string dEC_Str = Encoding.ASCII.GetString(dEC_data);
-            return dEC_Str;
+            byte[] byt = Convert.FromBase64String(Data);
+            string str = Encoding.ASCII.GetString(byt);
+            return str;
         }
     }
 }

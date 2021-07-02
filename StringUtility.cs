@@ -20,7 +20,6 @@ namespace Clear
         string GetDateCode();
         string GetSubstring(string text, int startIndex);
         string GetSubstring(string text, int startIndex, int count);
-        //string ParseEditorJS(string content);
         string ParseEditorJS(EditorJS.Content content);
         string StripHTML(string htmlstring);
         string StripSymbols(string xstring);

@@ -61,7 +61,7 @@ namespace Clear
         //{
         //    throw new NotImplementedException();
 
-        //    //var jjdjd = new Gma.QrCodeNet.Encoding.MatrixSize();
+        //    //var code = new Gma.QrCodeNet.Encoding.MatrixSize();
 
         //    //Gma.QrCodeNet.Encoding.QrEncoder Encoder = new Gma.QrCodeNet.Encoding.QrEncoder(Gma.QrCodeNet.Encoding.ErrorCorrectionLevel.H);
         //    //Gma.QrCodeNet.Encoding.QrCode Code = Encoder.Encode(text);

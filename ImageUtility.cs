@@ -22,33 +22,21 @@ namespace Clear
     {
         public byte[] ConvertBitmapToBytes(Bitmap bitmap)
         {
-            using (MemoryStream stream = new MemoryStream())
-            {
-                bitmap.Save(stream, ImageFormat.Png);
-                return stream.ToArray();
-            }
+            using MemoryStream stream = new MemoryStream();
+            bitmap.Save(stream, ImageFormat.Png);
+            return stream.ToArray();
         }
 
         public Image ScaleImage(Image image, int maxWidth, int maxHeight, ImageSizePref pref = ImageSizePref.None)
         {
             var ratioX = (double)maxWidth / image.Width;
             var ratioY = (double)maxHeight / image.Height;
-
-            double ratio = 1;
-
-            switch (pref)
+            double ratio = pref switch
             {
-                case ImageSizePref.Height:
-                    ratio = ratioY;
-                    break;
-                case ImageSizePref.Width:
-                    ratio = ratioX;
-                    break;
-                default:
-                    ratio = Math.Max(ratioX, ratioY);
-                    break;
-            }
-
+                ImageSizePref.Height => ratioY,
+                ImageSizePref.Width => ratioX,
+                _ => Math.Max(ratioX, ratioY),
+            };
             var newWidth = (int)(image.Width * ratio);
             var newHeight = (int)(image.Height * ratio);
 
@@ -66,7 +54,7 @@ namespace Clear
 
             // reduce image quality
             EncoderParameter qualityParam =
-                new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50);
+                new EncoderParameter(Encoder.Quality, 50);
 
             // Draw the given area (section) of the source image  
             // at location 0,0 on the empty bitmap (bmp)

@@ -129,6 +129,31 @@ namespace Clear
                 .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
                 .DownloadToFile(file.FullName, FileMode.OpenOrCreate);
 
+        public void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder) =>
+            CreateCloudBlobContainer(connectionString, containerName)
+                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
+                .DownloadToStream(file);
+
+        public void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
+            CreateCloudBlobContainer(connectionString, containerName)
+                .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
+                .DownloadToStream(file);
+
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder) =>
+            await CreateCloudBlobContainer(connectionString, containerName)
+                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
+                .DownloadToFileAsync(file.FullName, FileMode.OpenOrCreate);
+
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder) =>
+            await CreateCloudBlobContainer(connectionString, containerName)
+                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
+                .DownloadToStreamAsync(file);
+
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
+            await CreateCloudBlobContainer(connectionString, containerName)
+                .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
+                .DownloadToStreamAsync(file);
+
         public void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder)
         {
             CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);

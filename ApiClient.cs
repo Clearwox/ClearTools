@@ -32,10 +32,10 @@ namespace Clear
     }
     public class ApiClient : IApiClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _http;
         private string _lastResponseString;
 
-        public ApiClient() => _httpClient = new HttpClient();
+        public ApiClient() => _http = new HttpClient();
 
         #region get data
 
@@ -49,7 +49,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.GetAsync(requestUrl, HttpCompletionOption.ResponseHeadersRead);
+            var response = await _http.GetAsync(requestUrl, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TEntity>(_lastResponseString);
@@ -69,7 +69,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.PostAsync(requestUrl, CreateHttpContent(content));
+            var response = await _http.PostAsync(requestUrl, CreateHttpContent(content));
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return _lastResponseString;
@@ -87,7 +87,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.PostAsync(requestUrl, CreateHttpContent(content));
+            var response = await _http.PostAsync(requestUrl, CreateHttpContent(content));
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TResult>(_lastResponseString);
@@ -107,7 +107,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.PutAsync(requestUrl, CreateHttpContent(content));
+            var response = await _http.PutAsync(requestUrl, CreateHttpContent(content));
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return _lastResponseString;
@@ -125,7 +125,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.PutAsync(requestUrl, CreateHttpContent(content));
+            var response = await _http.PutAsync(requestUrl, CreateHttpContent(content));
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TResult>(_lastResponseString);
@@ -145,7 +145,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.DeleteAsync(requestUrl);
+            var response = await _http.DeleteAsync(requestUrl);
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return _lastResponseString;
@@ -163,7 +163,7 @@ namespace Clear
         {
             AddToken(token);
             AddHeaders(headers);
-            var response = await _httpClient.DeleteAsync(requestUrl);
+            var response = await _http.DeleteAsync(requestUrl);
             response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TEntity>(_lastResponseString);
@@ -199,8 +199,8 @@ namespace Clear
             if (headers == null) return;
             foreach (var header in headers)
             {
-                _httpClient.DefaultRequestHeaders.Remove(header.Key);
-                _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+                _http.DefaultRequestHeaders.Remove(header.Key);
+                _http.DefaultRequestHeaders.Add(header.Key, header.Value);
             }
         }
 

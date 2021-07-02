@@ -11,7 +11,7 @@ namespace Clear
     }
     public class BaseConverter : IBaseConverter
     {
-        private char[] Base36 = ("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ").ToCharArray();
+        private readonly char[] Base36 = ("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ").ToCharArray();
 
         public long ConvertToDecimal(string value, int originalBase)
         {
