@@ -27,6 +27,12 @@ namespace Clear
         string TruncateString(string id);
         string GenerateValidationCode(string input, DateTime expiryDate, int secretKey);
         bool ValidationCode(string code, string input, DateTime expiryDate, int secretKey);
+        string SQLSerialize(string rawString);
+        string SQLSerialize(bool value);
+        string SQLSerialize(DateTime? value);
+        string SQLSerialize(DateTime value);
+        string TimeSince(DateTime value);
+        string TimeAgo(DateTime dateTime);
     }
     public class StringUtility : IStringUtility
     {
@@ -173,5 +179,89 @@ namespace Clear
 
         public bool ValidationCode(string code, string input, DateTime expiryDate, int secretKey) =>
             code == GenerateValidationCode(input, expiryDate, secretKey);
+
+        public string SQLSerialize(string rawString) => rawString?.Replace("'", "''");
+        public string SQLSerialize(bool value) => (value ? 1 : 0).ToString();
+        public string SQLSerialize(DateTime? value) => value == null ? "" : SQLSerialize((DateTime)value);
+        public string SQLSerialize(DateTime value) => value.ToString("dd/MMM/yyy HH:mm:ss");
+
+        public string TimeSince(DateTime value)
+        {
+            const int SECOND = 1;
+            const int MINUTE = 60 * SECOND;
+            const int HOUR = 60 * MINUTE;
+            const int DAY = 24 * HOUR;
+            const int MONTH = 30 * DAY;
+
+            TimeSpan ts = new TimeSpan(DateTime.Now.Ticks - value.Ticks);
+            double seconds = ts.TotalSeconds;
+
+            // Less than one minute
+            if (seconds < 1 * MINUTE)
+                return ts.Seconds == 1 ? "one second ago" : ts.Seconds + " seconds ago";
+
+            if (seconds < 60 * MINUTE)
+                return ts.Minutes + " minutes ago";
+
+            if (seconds < 120 * MINUTE)
+                return "an hour ago";
+
+            if (seconds < 24 * HOUR)
+                return ts.Hours + " hours ago";
+
+            if (seconds < 48 * HOUR)
+                return "yesterday";
+
+            if (seconds < 30 * DAY)
+                return ts.Days + " days ago";
+
+            if (seconds < 12 * MONTH)
+            {
+                int months = Convert.ToInt32(Math.Floor((double)ts.Days / 30));
+                return months <= 1 ? "one month ago" : months + " months ago";
+            }
+
+            int years = Convert.ToInt32(Math.Floor((double)ts.Days / 365));
+            return years <= 1 ? "one year ago" : years + " years ago";
+        }
+        public string TimeAgo(DateTime dateTime)
+        {
+            var timeSpan = DateTime.Now.Subtract(dateTime);
+
+            if (timeSpan <= TimeSpan.FromSeconds(60))
+            {
+                return string.Format("{0} seconds ago", timeSpan.Seconds);
+            }
+            else if (timeSpan <= TimeSpan.FromMinutes(60))
+            {
+                return timeSpan.Minutes > 1 ?
+                    String.Format("about {0} minutes ago", timeSpan.Minutes) :
+                    "about a minute ago";
+            }
+            else if (timeSpan <= TimeSpan.FromHours(24))
+            {
+                return timeSpan.Hours > 1 ?
+                    String.Format("about {0} hours ago", timeSpan.Hours) :
+                    "about an hour ago";
+            }
+            else if (timeSpan <= TimeSpan.FromDays(30))
+            {
+                return timeSpan.Days > 1 ?
+                    String.Format("about {0} days ago", timeSpan.Days) :
+                    "yesterday";
+            }
+            else if (timeSpan <= TimeSpan.FromDays(365))
+            {
+                return timeSpan.Days > 30 ?
+                    String.Format("about {0} months ago", timeSpan.Days / 30) :
+                    "about a month ago";
+            }
+            else
+            {
+                return timeSpan.Days > 365 ?
+                    String.Format("about {0} years ago", timeSpan.Days / 365) :
+                    "about a year ago";
+            }
+        }
     }
 }

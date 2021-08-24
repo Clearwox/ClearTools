@@ -27,7 +27,6 @@ namespace Clear
         void WriteToFile(string filename, string text);
         Task WriteToFileAsync(string filename, string text);
     }
-
     public class FileManager : IFileManager
     {
         #region local file
