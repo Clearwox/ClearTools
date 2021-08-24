@@ -8,17 +8,26 @@ namespace Clear
 {
     public interface IFileManager
     {
-        string ReadFile(string filename);
-        Task<string> ReadFileAsync(string filename);
-        void WriteToFile(string filename, string text);
-        Task WriteToFileAsync(string filename, string text);
-        void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder);
-        void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder);
-        void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
-        void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
         bool AzureFolderExists(string connectionString, string containerName, string folder);
         void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder);
+        void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder);
+        void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder);
+        void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder);
+        Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder);
+        Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder);
+        Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder);
+        string ReadFile(string filename);
+        Task<string> ReadFileAsync(string filename);
+        Task UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder);
+        Task UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
+        Task UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
+        void UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder);
+        void UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
+        void UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
+        void WriteToFile(string filename, string text);
+        Task WriteToFileAsync(string filename, string text);
     }
+
     public class FileManager : IFileManager
     {
         #region local file
@@ -97,7 +106,9 @@ namespace Clear
             return blockBlob.ListBlobs().Count() > 0;
         }
 
-        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder)
+        #region upload to azure
+
+        public void UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder)
         {
             CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
@@ -106,7 +117,7 @@ namespace Clear
             blockBlob.UploadFromStream(stream, stream.Length);
         }
 
-        public void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder)
+        public void UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder)
         {
             CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
@@ -115,7 +126,7 @@ namespace Clear
             blockBlob.UploadFromStream(stream, stream.Length);
         }
 
-        public void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder)
+        public void UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder)
         {
             CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
@@ -123,6 +134,39 @@ namespace Clear
             blockBlob.Properties.ContentType = contentType;
             blockBlob.UploadFromFile(file.FullName);
         }
+
+        // async
+
+        public async Task UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder)
+        {
+            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            blobContainer.CreateIfNotExists();
+            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
+            blockBlob.Properties.ContentType = contentType;
+            await blockBlob.UploadFromStreamAsync(stream, stream.Length);
+        }
+
+        public async Task UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder)
+        {
+            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            blobContainer.CreateIfNotExists();
+            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
+            blockBlob.Properties.ContentType = contentType;
+            await blockBlob.UploadFromStreamAsync(stream, stream.Length);
+        }
+
+        public async Task UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder)
+        {
+            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            blobContainer.CreateIfNotExists();
+            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'));
+            blockBlob.Properties.ContentType = contentType;
+            await blockBlob.UploadFromFileAsync(file.FullName);
+        }
+
+        #endregion
+
+        #region download from azure
 
         public void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder) =>
             CreateCloudBlobContainer(connectionString, containerName)
@@ -139,6 +183,8 @@ namespace Clear
                 .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
                 .DownloadToStream(file);
 
+        // async
+
         public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder) =>
             await CreateCloudBlobContainer(connectionString, containerName)
                 .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
@@ -153,6 +199,8 @@ namespace Clear
             await CreateCloudBlobContainer(connectionString, containerName)
                 .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
                 .DownloadToStreamAsync(file);
+
+        #endregion
 
         public void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder)
         {
