@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/Clearwox/ClearTools/</RepositoryUrl>
     <Copyright>Copyright 2018</Copyright>
     <PackageTags />
-    <Version>2.1.17</Version>
+    <Version>2.1.18</Version>
   </PropertyGroup>
 
   <ItemGroup>

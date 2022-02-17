@@ -28,6 +28,8 @@ namespace Clear
         Task<TResult> PutAsync<TEntity, TResult>(string requestUrl, TEntity content, string token, bool ensureSuccess = true);
         Task<TResult> PutAsync<TEntity, TResult>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true);
 
+        Task<CaptcherResponse> ValidateGoogleCaptcharAsync(string secretKey, string recaptchaResponse, string remoteip, string requestUrl = "https://www.google.com/recaptcha/api/siteverify");
+        
         TEntity Serialize<TEntity>(string data);
     }
     public class ApiClient : IApiClient
@@ -91,6 +93,24 @@ namespace Clear
             if (ensureSuccess) response.EnsureSuccessStatusCode();
             _lastResponseString = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TResult>(_lastResponseString);
+        }
+
+        // ========
+
+        public async Task<CaptcherResponse> ValidateGoogleCaptcharAsync(string secretKey, string recaptchaResponse, string remoteip, string requestUrl = "https://www.google.com/recaptcha/api/siteverify")
+        {
+            var parameters = new Dictionary<string, string>
+            {
+                {"secret", secretKey},
+                {"response", recaptchaResponse},
+                {"remoteip", remoteip}
+            };
+
+            HttpResponseMessage response = await _http.PostAsync(requestUrl, new FormUrlEncodedContent(parameters));
+            response.EnsureSuccessStatusCode();
+
+            string apiResponse = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<CaptcherResponse>(apiResponse);
         }
 
         #endregion
