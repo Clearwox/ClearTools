@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Linq;
-using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace Clear
 {
@@ -23,7 +23,7 @@ namespace Clear
 
     public static class Tools
     {
-        public static IApiClient ApiClient => new ApiClient();
+        //public static IApiClient ApiClient => new ApiClient();
         public static IBaseConverter BaseConverter => new BaseConverter();
         public static ICrypto Crypto => new Crypto();
         public static IFileManager FileManager => new FileManager();

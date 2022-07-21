@@ -35,9 +35,13 @@ namespace Clear
     public class ApiClient : IApiClient
     {
         private readonly HttpClient _http;
-        private string _lastResponseString;
 
-        public ApiClient() => _http = new HttpClient();
+        public ApiClient(HttpClient http)
+        {
+            _http = http;
+        }
+
+        private string _lastResponseString;
 
         #region get data
 
@@ -200,7 +204,7 @@ namespace Clear
 
         private static JsonSerializerSettings MicrosoftDateFormatSettings => new JsonSerializerSettings
         {
-            DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
+           DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
         };
 
         public string LastResponseString => _lastResponseString;

@@ -1,5 +1,6 @@
-﻿using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+﻿using Azure.Storage;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ namespace Clear
     {
         bool AzureFolderExists(string connectionString, string containerName, string folder);
         void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder);
+        Task DeleteFromAzureAsync(string connectionString, string containerName, string fileName, string folder);
         void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder);
         void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder);
         void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder);
@@ -18,12 +20,12 @@ namespace Clear
         Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder);
         string ReadFile(string filename);
         Task<string> ReadFileAsync(string filename);
-        Task UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder);
-        Task UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
-        Task UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
-        void UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder);
-        void UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
-        void UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
+        void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
+        void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
+        void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder);
+        Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
+        Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
+        Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder);
         void WriteToFile(string filename, string text);
         Task WriteToFileAsync(string filename, string text);
     }
@@ -94,118 +96,107 @@ namespace Clear
 
         #region azure storage
 
-        private CloudBlobContainer CreateCloudBlobContainer(string connectionString, string containerName) =>
-            CloudStorageAccount.Parse(connectionString).CreateCloudBlobClient().GetContainerReference(containerName);
+        private BlobContainerClient CreateCloudBlobContainer(string connectionString, string containerName) =>
+            new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
+
+        //public bool AzureFolderExists(string connectionString, string containerName, string folder)
+        //{
+        //    CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+        //    blobContainer.CreateIfNotExists();
+        //    var blockBlob = blobContainer.GetDirectoryReference(folder);
+        //    return blockBlob.ListBlobs().Count() > 0;
+        //}
 
         public bool AzureFolderExists(string connectionString, string containerName, string folder)
         {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetDirectoryReference(folder);
-            return blockBlob.ListBlobs().Count() > 0;
+            var blockBlob = blobContainer.FindBlobsByTags(folder);
+            return blockBlob.Any();
+        }
+
+        private BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string folder)
+        {
+            BlobContainerClient blobContainer = new BlobContainerClient(connectionString, containerName);
+            blobContainer.CreateIfNotExists();
+            return blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
         }
 
         #region upload to azure
 
-        public void UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            blockBlob.UploadFromStream(stream, stream.Length);
-        }
+        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) => 
+            GetBlobClient(connectionString, containerName, fileName, folder).Upload(stream, new BlobHttpHeaders { ContentType = contentType });
 
-        public void UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            blockBlob.UploadFromStream(stream, stream.Length);
-        }
+        public void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder) =>
+            GetBlobClient(connectionString, containerName, fileName, folder).Upload(stream, new BlobHttpHeaders { ContentType = contentType });
 
-        public void UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            blockBlob.UploadFromFile(file.FullName);
-        }
+        public void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder) =>
+            GetBlobClient(connectionString, containerName, file.Name, folder).Upload(file.FullName, new BlobHttpHeaders { ContentType = contentType });
 
         // async
 
-        public async Task UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            await blockBlob.UploadFromStreamAsync(stream, stream.Length);
-        }
+        public async Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) =>
+            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(stream, new BlobHttpHeaders { ContentType = contentType });
 
-        public async Task UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            await blockBlob.UploadFromStreamAsync(stream, stream.Length);
-        }
+        public async Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder) =>
+            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(stream, new BlobHttpHeaders { ContentType = contentType });
 
-        public async Task UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder)
-        {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'));
-            blockBlob.Properties.ContentType = contentType;
-            await blockBlob.UploadFromFileAsync(file.FullName);
-        }
+        public async Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder) =>
+            await GetBlobClient(connectionString, containerName, file.Name, folder).UploadAsync(file.FullName, new BlobHttpHeaders { ContentType = contentType });
 
         #endregion
 
         #region download from azure
 
+        //public void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder) =>
+        //    CreateCloudBlobContainer(connectionString, containerName)
+        //        .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
+        //        .DownloadToFile(file.FullName, FileMode.OpenOrCreate);
+
+        //public void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder) =>
+        //    CreateCloudBlobContainer(connectionString, containerName)
+        //        .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
+        //        .DownloadToStream(file);
+
+        //public void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
+        //    CreateCloudBlobContainer(connectionString, containerName)
+        //        .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
+        //        .DownloadToStream(file);
+
         public void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder) =>
-            CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-                .DownloadToFile(file.FullName, FileMode.OpenOrCreate);
+            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(file.FullName);
 
         public void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder) =>
-            CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-                .DownloadToStream(file);
+            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(file);
 
         public void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
-            CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
-                .DownloadToStream(file);
+            GetBlobClient(connectionString, containerName, filename, folder).DownloadTo(file);
 
         // async
 
         public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder) =>
-            await CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-                .DownloadToFileAsync(file.FullName, FileMode.OpenOrCreate);
+            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(file.FullName);
 
         public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder) =>
-            await CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-                .DownloadToStreamAsync(file);
+            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(file);
 
         public async Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
-            await CreateCloudBlobContainer(connectionString, containerName)
-                .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
-                .DownloadToStreamAsync(file);
+            await GetBlobClient(connectionString, containerName, filename, folder).DownloadToAsync(file);
 
         #endregion
 
         public void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder)
         {
-            CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-            var blockBlob = blobContainer.GetBlockBlobReference($"{folder}\\{fileName}".Trim('\\'));
+            BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
             blockBlob.DeleteIfExists();
+        }
+
+        public async Task DeleteFromAzureAsync(string connectionString, string containerName, string fileName, string folder)
+        {
+            BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
+            var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
+            await blockBlob.DeleteIfExistsAsync();
         }
 
         #endregion
