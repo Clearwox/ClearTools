@@ -111,8 +111,7 @@ namespace Clear
         {
             BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
-            var blockBlob = blobContainer.FindBlobsByTags(folder);
-            return blockBlob.Any();
+            return blobContainer.GetBlobs(prefix: folder).Any();
         }
 
         private BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string folder)
