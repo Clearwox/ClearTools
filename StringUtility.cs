@@ -21,9 +21,9 @@ namespace Clear
         string GetSubstring(string text, int startIndex);
         string GetSubstring(string text, int startIndex, int count);
         string ParseEditorJS(EditorJS.Content content);
-        string StripHTML(string htmlstring);
-        string StripSymbols(string xstring);
-        string StripSymbolsAndHTML(string xstring);
+        string StripHTML(string htmlString);
+        string StripSymbols(string text);
+        string StripSymbolsAndHTML(string htmlString);
         string TruncateString(string id);
         string GenerateValidationCode(string input, DateTime expiryDate, int secretKey);
         bool ValidationCode(string code, string input, DateTime expiryDate, int secretKey);
@@ -53,36 +53,31 @@ namespace Clear
 
         public string GenerateTags(params string[] keys) => string.Join(",", keys);
 
-        public string StripHTML(string htmlstring) =>
-            Regex.Replace(htmlstring, "<[^>]*>", string.Empty).Replace("&nbsp;", string.Empty).Trim();
+        public string StripHTML(string htmlString) =>
+            Regex.Replace(htmlString, "<[^>]*>", string.Empty).Replace("&nbsp;", string.Empty).Trim();
 
-        public string StripSymbols(string xstring) =>
-            new Regex("[;\\\\\\\\/:*?\"<>|&']")
-                .Replace(xstring, string.Empty)
-                .Replace("+", string.Empty)
-                .Replace(".", string.Empty)
-                .Replace("`", string.Empty)
-                .Replace("'", string.Empty)
-                .Replace(",", string.Empty)
-                .Replace("/", string.Empty)
-                .Replace("'", string.Empty)
-                .Replace("(", string.Empty)
-                .Replace(")", string.Empty)
-                .Replace("[", string.Empty)
-                .Replace("]", string.Empty)
-                .Replace("{", string.Empty)
-                .Replace("}", string.Empty)
-                .Replace("\\", string.Empty)
-                .Replace("\"", string.Empty)
-                .Replace("#", string.Empty)
-                .Replace("*", string.Empty);
+        public string StripSymbols(string text)
+        {
+            string pattern = "[;\\\\/:*?\"<>|&'+`',/\\(\\)\\[\\]{}\\\"#*]";
+            return Regex.Replace(text, pattern, string.Empty);
+        }
 
-        public string StripSymbolsAndHTML(string htmlstring) =>
-            StripSymbols(StripHTML(htmlstring));
+        public string StripSymbolsAndHTML(string htmlString) =>
+            StripSymbols(StripHTML(htmlString));
 
-        public string GetSubstring(string text, int startIndex) => text.Substring(startIndex);
+        public string GetSubstring(string text, int startIndex)
+        {
+            ReadOnlySpan<char> span = text.AsSpan(startIndex);
+            return new string(span);
+        }
 
-        public string GetSubstring(string text, int startIndex, int count) => text.Substring(startIndex, count);
+
+        public string GetSubstring(string text, int startIndex, int count)
+        {
+            ReadOnlySpan<char> span = text.AsSpan(startIndex, count);
+            return new string(span);
+        }
+
 
         public string GenerateFileName(string title, string fileExtension) =>
             GenerateFileName(title, fileExtension, string.Empty);
