@@ -11,14 +11,14 @@
 		<RepositoryUrl>https://github.com/Clearwox/ClearTools/</RepositoryUrl>
 		<Copyright>Copyright 2018</Copyright>
 		<PackageTags />
-		<Version>2.1.21</Version>
+		<Version>2.1.22</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-		<PackageReference Include="Azure.Storage.Blobs" Version="12.13.1" />
-		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
-		<PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+		<PackageReference Include="System.Drawing.Common" Version="8.0.1" />
 	</ItemGroup>
 
 </Project>

@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using System.Xml.Linq;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Net.Http;
-using Newtonsoft.Json;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Clear
 {
@@ -29,7 +28,7 @@ namespace Clear
         Task<TResult> PutAsync<TEntity, TResult>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true);
 
         Task<CaptcherResponse> ValidateGoogleCaptcharAsync(string secretKey, string recaptchaResponse, string remoteip, string requestUrl = "https://www.google.com/recaptcha/api/siteverify");
-        
+
         TEntity Serialize<TEntity>(string data);
     }
     public class ApiClient : IApiClient
@@ -204,7 +203,7 @@ namespace Clear
 
         private static JsonSerializerSettings MicrosoftDateFormatSettings => new JsonSerializerSettings
         {
-           DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
+            DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
         };
 
         public string LastResponseString => _lastResponseString;

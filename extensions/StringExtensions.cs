@@ -35,7 +35,7 @@ namespace ClearTools.extensions
         }
 
         public static string ExtractNumbers(this string value)
-        => Regex.Replace(value, "[^0-9.]", "").Trim();
+        => Regex.Replace(value, "[^0-9.-]", "").Trim();
 
         public static int ToInt32(this string value)
         => Convert.ToInt32(value.ExtractNumbers());
@@ -48,5 +48,8 @@ namespace ClearTools.extensions
 
         public static DateTime ToDateTime(this string value)
         => Convert.ToDateTime(value);
+
+        public static byte[] FromBase64String(this string value)
+        => Convert.FromBase64String(value);
     }
 }

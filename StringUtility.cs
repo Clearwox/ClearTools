@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,6 +21,7 @@ namespace Clear
         string GetDateCode();
         string GetSubstring(string text, int startIndex);
         string GetSubstring(string text, int startIndex, int count);
+        string ParseEditorJS(string content);
         string ParseEditorJS(EditorJS.Content content);
         string StripHTML(string htmlString);
         string StripSymbols(string text);
@@ -142,8 +144,8 @@ namespace Clear
                 _ => ""
             };
         }
-        //public string ParseEditorJS(string content) => 
-        //    ParseEditorJS(JsonConvert.DeserializeObject<EditorJS.Content>(content));
+        public string ParseEditorJS(string content) =>
+            ParseEditorJS(JsonConvert.DeserializeObject<EditorJS.Content>(content));
         public string ParseEditorJS(EditorJS.Content content)
         {
             StringBuilder builder = new StringBuilder();
