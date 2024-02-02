@@ -1,5 +1,4 @@
-﻿using Azure.Storage;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System.IO;
 using System.Linq;
@@ -123,7 +122,7 @@ namespace Clear
 
         #region upload to azure
 
-        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) => 
+        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) =>
             GetBlobClient(connectionString, containerName, fileName, folder).Upload(stream, new BlobHttpHeaders { ContentType = contentType });
 
         public void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder) =>
