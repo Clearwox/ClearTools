@@ -51,5 +51,8 @@ namespace ClearTools.extensions
 
         public static byte[] FromBase64String(this string value)
         => Convert.FromBase64String(value);
+
+        public static bool EqualsNoCase(this string text, string value)
+        => text.ToLower() == value.ToLower();
     }
 }
