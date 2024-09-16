@@ -1,5 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Tasks;
 
 namespace Clear
 {
@@ -37,7 +39,7 @@ namespace Clear
 
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
-            if (!((_skipRoot && context.Request.Path == "/") || 
+            if (!((_skipRoot && context.Request.Path == "/") ||
                   (_skipDev && context.Request.Host.Host.Contains("localhost"))))
             {
                 string key = context.Request.Headers["key"];
@@ -54,5 +56,19 @@ namespace Clear
         }
 
         bool RequestNotValid(string key) => key != _key;
+    }
+
+    public static class RequestValidationMiddlewareExtension
+    {
+        public static IServiceCollection AddRequestValidation(this IServiceCollection services, string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true)
+        {
+            services.AddSingleton(s => new RequestValidationMiddleware(validationKey, skipForDevelopment, skipRootEndPoint));
+            return services;
+        }
+
+        public static IApplicationBuilder UseRequestValidation(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<RequestValidationMiddleware>();
+        }
     }
 }

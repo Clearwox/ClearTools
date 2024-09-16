@@ -2,31 +2,40 @@
 using Azure.Storage.Blobs.Models;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Clear
 {
     public interface IFileManager
     {
-        bool AzureFolderExists(string connectionString, string containerName, string folder);
-        void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder);
-        Task DeleteFromAzureAsync(string connectionString, string containerName, string fileName, string folder);
-        void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder);
-        void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder);
-        void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder);
-        Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder);
-        Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder);
-        Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder);
         string ReadFile(string filename);
         Task<string> ReadFileAsync(string filename);
-        void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
-        void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
-        void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder);
-        Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder);
-        Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder);
-        Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder);
         void WriteToFile(string filename, string text);
         Task WriteToFileAsync(string filename, string text);
+
+        bool AzureFolderExists(string connectionString, string containerName, string folder);
+        
+        void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder, CancellationToken cancellationToken = default);
+        Task DeleteFromAzureAsync(string connectionString, string containerName, string fileName, string folder, CancellationToken cancellationToken = default);
+        
+        void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder, CancellationToken cancellationToken = default);
+        void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder, CancellationToken cancellationToken = default);
+        void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default);
+        
+        Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder, CancellationToken cancellationToken = default);
+        Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder, CancellationToken cancellationToken = default);
+        Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default);
+        
+        void UploadToAzure(string connectionString, string containerName, Stream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder, CancellationToken cancellationToken = default);
+        
+        Task UploadToAzureAsync(string connectionString, string containerName, Stream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder, CancellationToken cancellationToken = default);
+        Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder, CancellationToken cancellationToken = default);
     }
     public class FileManager : IFileManager
     {
@@ -98,13 +107,12 @@ namespace Clear
         private BlobContainerClient CreateCloudBlobContainer(string connectionString, string containerName) =>
             new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
 
-        //public bool AzureFolderExists(string connectionString, string containerName, string folder)
-        //{
-        //    CloudBlobContainer blobContainer = CreateCloudBlobContainer(connectionString, containerName);
-        //    blobContainer.CreateIfNotExists();
-        //    var blockBlob = blobContainer.GetDirectoryReference(folder);
-        //    return blockBlob.ListBlobs().Count() > 0;
-        //}
+        private BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string folder)
+        {
+            BlobContainerClient blobContainer = new BlobContainerClient(connectionString, containerName);
+            blobContainer.CreateIfNotExists();
+            return blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
+        }
 
         public bool AzureFolderExists(string connectionString, string containerName, string folder)
         {
@@ -113,88 +121,144 @@ namespace Clear
             return blobContainer.GetBlobs(prefix: folder).Any();
         }
 
-        private BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string folder)
-        {
-            BlobContainerClient blobContainer = new BlobContainerClient(connectionString, containerName);
-            blobContainer.CreateIfNotExists();
-            return blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
-        }
-
         #region upload to azure
 
-        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) =>
-            GetBlobClient(connectionString, containerName, fileName, folder).Upload(stream, new BlobHttpHeaders { ContentType = contentType });
+        public void UploadToAzure(string connectionString, string containerName, Stream stream, 
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, fileName, folder).Upload(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
-        public void UploadToAzure(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder) =>
-            GetBlobClient(connectionString, containerName, fileName, folder).Upload(stream, new BlobHttpHeaders { ContentType = contentType });
+        public void UploadToAzure(string connectionString, string containerName, MemoryStream stream, 
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, fileName, folder).Upload(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
-        public void UploadToAzure(string connectionString, string containerName, FileInfo file, string contentType, string folder) =>
-            GetBlobClient(connectionString, containerName, file.Name, folder).Upload(file.FullName, new BlobHttpHeaders { ContentType = contentType });
+        public void UploadToAzure(string connectionString, string containerName, FileStream stream,
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, fileName, folder).Upload(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
+
+        public void UploadToAzure(string connectionString, string containerName, FileInfo file,
+            string contentType, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, file.Name, folder).Upload(
+                file.FullName, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
         // async
 
-        public async Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, string contentType, string fileName, string folder) =>
-            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(stream, new BlobHttpHeaders { ContentType = contentType });
+        public async Task UploadToAzureAsync(string connectionString, string containerName, Stream stream, 
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
-        public async Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, string contentType, string fileName, string folder) =>
-            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(stream, new BlobHttpHeaders { ContentType = contentType });
+        public async Task UploadToAzureAsync(string connectionString, string containerName, MemoryStream stream, 
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
-        public async Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, string contentType, string folder) =>
-            await GetBlobClient(connectionString, containerName, file.Name, folder).UploadAsync(file.FullName, new BlobHttpHeaders { ContentType = contentType });
+        public async Task UploadToAzureAsync(string connectionString, string containerName, FileStream stream, 
+            string contentType, string fileName, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, fileName, folder).UploadAsync(
+                stream, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
+
+        public async Task UploadToAzureAsync(string connectionString, string containerName, FileInfo file, 
+            string contentType, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, file.Name, folder).UploadAsync(
+                file.FullName, new BlobHttpHeaders { ContentType = contentType }, cancellationToken: cancellationToken
+            );
+        }
 
         #endregion
 
         #region download from azure
 
-        //public void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder) =>
-        //    CreateCloudBlobContainer(connectionString, containerName)
-        //        .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-        //        .DownloadToFile(file.FullName, FileMode.OpenOrCreate);
+        public void DownloadFromAzure(string connectionString, string containerName, 
+            FileInfo file, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(
+                file.FullName, cancellationToken: cancellationToken
+            );
+        }
 
-        //public void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder) =>
-        //    CreateCloudBlobContainer(connectionString, containerName)
-        //        .GetBlockBlobReference($"{folder}\\{file.Name}".Trim('\\'))
-        //        .DownloadToStream(file);
+        public void DownloadFromAzure(string connectionString, string containerName, 
+            FileStream file, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(
+                file, cancellationToken: cancellationToken
+            );
+        }
 
-        //public void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
-        //    CreateCloudBlobContainer(connectionString, containerName)
-        //        .GetBlockBlobReference($"{folder}\\{filename}".Trim('\\'))
-        //        .DownloadToStream(file);
-
-        public void DownloadFromAzure(string connectionString, string containerName, FileInfo file, string folder) =>
-            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(file.FullName);
-
-        public void DownloadFromAzure(string connectionString, string containerName, FileStream file, string folder) =>
-            GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(file);
-
-        public void DownloadFromAzure(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
-            GetBlobClient(connectionString, containerName, filename, folder).DownloadTo(file);
+        public void DownloadFromAzure(string connectionString, string containerName, 
+            string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default)
+        {
+            GetBlobClient(connectionString, containerName, filename, folder).DownloadTo(
+                file, cancellationToken: cancellationToken
+            );
+        }
 
         // async
 
-        public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileInfo file, string folder) =>
-            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(file.FullName);
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, 
+            FileInfo file, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(
+                file.FullName, cancellationToken: cancellationToken
+            );
+        }
 
-        public async Task DownloadFromAzureAsync(string connectionString, string containerName, FileStream file, string folder) =>
-            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(file);
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, 
+            FileStream file, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(
+                file, cancellationToken: cancellationToken
+            );
+        }
 
-        public async Task DownloadFromAzureAsync(string connectionString, string containerName, string filename, MemoryStream file, string folder) =>
-            await GetBlobClient(connectionString, containerName, filename, folder).DownloadToAsync(file);
+        public async Task DownloadFromAzureAsync(string connectionString, string containerName, 
+            string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default)
+        {
+            await GetBlobClient(connectionString, containerName, filename, folder).DownloadToAsync(
+                file, cancellationToken: cancellationToken
+            );
+        }
 
         #endregion
 
-        public void DeleteFromAzure(string connectionString, string containerName, string fileName, string folder)
+        public void DeleteFromAzure(string connectionString, string containerName, string fileName, 
+            string folder, CancellationToken cancellationToken = default)
         {
             BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
-            blockBlob.DeleteIfExists();
+            blockBlob.DeleteIfExists(cancellationToken: cancellationToken);
         }
 
-        public async Task DeleteFromAzureAsync(string connectionString, string containerName, string fileName, string folder)
+        public async Task DeleteFromAzureAsync(string connectionString, string containerName, 
+            string fileName, string folder, CancellationToken cancellationToken = default)
         {
             BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
-            await blockBlob.DeleteIfExistsAsync();
+            await blockBlob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
         }
 
         #endregion
