@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace ClearTools.extensions
@@ -14,25 +16,8 @@ namespace ClearTools.extensions
         public static bool Search(this string text, string value)
         => text.ToLower().Contains(value.ToLower());
 
-        public static string StripSymbols(this string text) 
+        public static string StripSymbols(this string text)
         => Regex.Replace(text, "[;\\\\/:*?\"<>|&'+`',/\\(\\)\\[\\]{}\\\"#*]", string.Empty);
-
-        public static string StripNumber(this string text)
-        {
-            int dotIndex = text.IndexOf('.');
-            if (dotIndex >= 0)
-            {
-                string wholePart = text.Substring(0, dotIndex).Replace(",", "");
-                string decimalPart = text.Substring(dotIndex + 1);
-
-                if (decimalPart.ToDouble() == 0)
-                    return wholePart;
-                else
-                    return $"{wholePart}.{decimalPart}";
-            }
-
-            return text;
-        }
 
         public static string ExtractNumbers(this string value)
         => Regex.Replace(value, "[^0-9.-]", "").Trim();
@@ -54,5 +39,19 @@ namespace ClearTools.extensions
 
         public static bool EqualsNoCase(this string text, string value)
         => text.ToLower() == value.ToLower();
+
+        public static List<string> ToListFromCsv(this string csv)
+        {
+            return string.IsNullOrWhiteSpace(csv)
+                ? new List<string>()
+                : new List<string>(csv.Split(',').Select(item => item.Trim()));
+        }
+
+        public static HashSet<string> ToHashSetFromCsv(this string csv)
+        {
+            return string.IsNullOrWhiteSpace(csv)
+                ? new HashSet<string>()
+                : new HashSet<string>(csv.Split(',').Select(item => item.Trim()));
+        }
     }
 }

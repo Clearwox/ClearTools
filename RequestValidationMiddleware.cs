@@ -7,16 +7,16 @@ namespace Clear
 {
     public class RequestValidationOption
     {
-        public RequestValidationOption(string validationKey, bool skipForDevelopment = false, bool skipforRootEndPoint = true)
+        public RequestValidationOption(string validationKey, bool skipForDevelopment = false, bool skipForRootEndPoint = true)
         {
             ValidationKey = validationKey;
             SkipForDevelopment = skipForDevelopment;
-            SkipforRootEndPoint = skipforRootEndPoint;
+            SkipForRootEndPoint = skipForRootEndPoint;
         }
 
         public string ValidationKey { get; set; }
         public bool SkipForDevelopment { get; set; }
-        public bool SkipforRootEndPoint { get; set; }
+        public bool SkipForRootEndPoint { get; set; }
     }
 
     public class RequestValidationMiddleware : IMiddleware
@@ -60,7 +60,8 @@ namespace Clear
 
     public static class RequestValidationMiddlewareExtension
     {
-        public static IServiceCollection AddRequestValidation(this IServiceCollection services, string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true)
+        public static IServiceCollection AddRequestValidation(this IServiceCollection services, 
+            string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true)
         {
             services.AddSingleton(s => new RequestValidationMiddleware(validationKey, skipForDevelopment, skipRootEndPoint));
             return services;
