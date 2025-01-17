@@ -1,4 +1,5 @@
 ﻿using Clear.Exceptions;
+using Clear.Models;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -254,7 +255,9 @@ namespace Clear
 
         #endregion
 
-        public async Task<CaptcherResponse> ValidateGoogleCaptcharAsync(string secretKey, string response, string remoteIp, string requestUrl = "https://www.google.com/recaptcha/api/siteverify", CancellationToken cancellationToken = default)
+        public async Task<CaptcherResponse> ValidateGoogleCaptcharAsync(string secretKey, string response, 
+            string remoteIp, string requestUrl = "https://www.google.com/recaptcha/api/siteverify", 
+            CancellationToken cancellationToken = default)
         {
             var parameters = new Dictionary<string, string>
             {
