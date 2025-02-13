@@ -82,39 +82,27 @@ namespace Clear.Tools
 
         public static string CreateParagraphsFromReturns(string text)
         {
-            var xe = new XElement("div");
+            var divElement = new XElement("div");
 
-            foreach (var block in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-            {
-                xe.Add(new XElement("p", block));
-            }
+            var paragraphs = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(line => new XElement("p", line));
 
-            return xe.ToString();
+            divElement.Add(paragraphs);
+
+            return divElement.ToString();
         }
 
-        public static string CreateReturnsFromParagraphs(string text)
+        public static string CreateReturnsFromParagraphs(string html)
         {
-            text = text.Replace("<div>", string.Empty)
-                       .Replace("</div>", string.Empty)
-                       .Replace("<p>", string.Empty)
-                       .Replace("</p>", string.Empty);
+            var xElement = XElement.Parse(html);
 
-            var blocks = text.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            var result = new StringBuilder();
+            var paragraphs = xElement.Elements("p")
+                                     .Select(p => p.Value.Trim())
+                                     .Where(p => !string.IsNullOrEmpty(p));
 
-            foreach (var block in blocks)
-            {
-                var trimmedBlock = block.Trim();
-                if (!string.IsNullOrEmpty(trimmedBlock))
-                {
-                    if (result.Length > 0)
-                        result.Append('\n');
-                    result.Append(trimmedBlock);
-                }
-            }
-
-            return StripHTML(result.ToString());
+            return string.Join('\n', paragraphs);
         }
+
 
         public static string GenerateValidationCode(string input, DateTime expiryDate, int secretKey)
         {
