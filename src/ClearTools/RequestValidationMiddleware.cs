@@ -42,7 +42,7 @@ namespace Clear
             if (!((_skipRoot && context.Request.Path == "/") ||
                   (_skipDev && context.Request.Host.Host.Contains("localhost"))))
             {
-                string key = context.Request.Headers["key"];
+                string key = context.Request.Headers["key"].ToString();
 
                 if (RequestNotValid(key))
                 {
@@ -60,7 +60,7 @@ namespace Clear
 
     public static class RequestValidationMiddlewareExtension
     {
-        public static IServiceCollection AddRequestValidation(this IServiceCollection services, 
+        public static IServiceCollection AddRequestValidation(this IServiceCollection services,
             string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true)
         {
             services.AddSingleton(s => new RequestValidationMiddleware(validationKey, skipForDevelopment, skipRootEndPoint));
