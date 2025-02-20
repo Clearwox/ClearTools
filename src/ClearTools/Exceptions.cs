@@ -2,6 +2,9 @@
 
 namespace Clear.Exceptions
 {
+    /// <summary>
+    /// Exception thrown when data deserialization fails.
+    /// </summary>
     public class DataDeserializationException : Exception
     {
         public DataDeserializationException(Type type, string data) 

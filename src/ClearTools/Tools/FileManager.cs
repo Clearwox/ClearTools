@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 
 namespace Clear.Tools
 {
-    public static partial class Manager
+    public static partial class FileManager
     {
         public static void Write(string filename, string text)
         {
             using var sw = new StreamWriter(filename, append: false);
-            sw.WriteLine(text);
+            sw.Write(text);
         }
 
         public static string Read(string filename)
@@ -20,7 +20,7 @@ namespace Clear.Tools
         public static async Task WriteAsync(string filename, string text)
         {
             using var sw = new StreamWriter(filename, append: false);
-            await sw.WriteLineAsync(text).ConfigureAwait(false);
+            await sw.WriteAsync(text).ConfigureAwait(false);
         }
 
         public static async Task<string> ReadAsync(string filename)

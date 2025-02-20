@@ -25,10 +25,17 @@ namespace Clear.Tools
             if (string.IsNullOrWhiteSpace(content))
                 throw new ArgumentException("Content cannot be null or empty.");
 
-            var editorContent = JsonConvert.DeserializeObject<Clear.Models.EditorJS.Content>(content) ??
-                throw new JsonException("Deserialization returned null.");
+            try
+            {
+                var editorContent = JsonConvert.DeserializeObject<Clear.Models.EditorJS.Content>(content) ??
+                    throw new JsonException("Deserialization returned null.");
 
-            return Parse(editorContent);
+                return Parse(editorContent);
+            }
+            catch (JsonReaderException)
+            {
+                throw new ArgumentException("Content is not a valid json");
+            }
         }
 
         public static string Parse(Clear.Models.EditorJS.Content content)
