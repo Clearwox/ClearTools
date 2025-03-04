@@ -38,7 +38,13 @@ namespace Clear.Tools
             return Convert.ToBase64String(hashBytes);
         }
 
-        public static string DecodeSHA1(string input)
+        public static string EncodeBase64(string input)
+        {
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
+            return Convert.ToBase64String(inputBytes);
+        }
+
+        public static string DecodeBase64(string input)
         {
             byte[] bytes = Convert.FromBase64String(input);
             return Encoding.UTF8.GetString(bytes);
