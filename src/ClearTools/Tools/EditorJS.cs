@@ -1,13 +1,14 @@
-﻿using Newtonsoft.Json;
-using System.Text;
+﻿using Clear.Models.EditorJS;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
+using System.Text;
 
 namespace Clear.Tools
 {
     public static class EditorJS
     {
-        private static string ParseHeading(Clear.Models.EditorJS.Data data)
+        private static string ParseHeading(Data data)
         {
             return data.level switch
             {
@@ -27,7 +28,7 @@ namespace Clear.Tools
 
             try
             {
-                var editorContent = JsonConvert.DeserializeObject<Clear.Models.EditorJS.Content>(content) ??
+                var editorContent = JsonConvert.DeserializeObject<Content>(content) ??
                     throw new JsonException("Deserialization returned null.");
 
                 return Parse(editorContent);
@@ -38,7 +39,7 @@ namespace Clear.Tools
             }
         }
 
-        public static string Parse(Clear.Models.EditorJS.Content content)
+        public static string Parse(Content content)
         {
             StringBuilder builder = new StringBuilder();
 
@@ -48,7 +49,7 @@ namespace Clear.Tools
                 {
                     "header" => ParseHeading(itm.data),
                     "paragraph" => $"<p>{itm.data.text}</p>",
-                    "list" => $"<{(itm.data.style == "unordered" ? "ul" : "ol")}>{string.Join("", itm.data.items.Select(x => $"<li>{x}</li>"))}</{(itm.data.style == "unordered" ? "ul" : "ol")}>",
+                    "list" => ParseList(itm.data.items, itm.data.style),
                     "image" => $"<img style=\"max-width: 100%;\" src=\"{itm.data.url}\" /><p>{itm.data.caption}</p>",
                     "embed" => itm.data.service switch
                     {
@@ -60,6 +61,27 @@ namespace Clear.Tools
                 });
             }
 
+            return builder.ToString();
+        }
+
+        private static string ParseList(Item[] items, string style)
+        {
+            var tag = style == "unordered" ? "ul" : "ol";
+            var builder = new StringBuilder();
+            builder.Append($"<{tag}>");
+
+            foreach (var item in items)
+            {
+                builder.Append("<li>");
+                builder.Append(item.content);
+                if (item.items != null && item.items.Any())
+                {
+                    builder.Append(ParseList(item.items, style));
+                }
+                builder.Append("</li>");
+            }
+
+            builder.Append($"</{tag}>");
             return builder.ToString();
         }
     }
