@@ -20,21 +20,35 @@ namespace Clear.Tools
             }
         }
 
-        public static ValidationCodeResult GenerateCode(string text, int secretKey, TimeSpan expiryDuration, int codeLength = 6)
+        private static void ValidateCodeLength(int codeLength)
         {
             if (codeLength <= 0 || codeLength > 10)
             {
                 throw new ArgumentException("Code length must be between 1 and 10.");
             }
+        }
+
+        public static ValidationCodeResult GenerateCode(string text, int secretKey, TimeSpan expiryDuration, int codeLength = 6)
+        {
+            ValidateCodeLength(codeLength);
 
             var expiryTime = DateTime.UtcNow.Add(expiryDuration);
             var code = Generate(text, secretKey, expiryTime, codeLength);
 
-            return new ValidationCodeResult
-            {
-                Code = code,
-                ExpiryTime = expiryTime
-            };
+            return new ValidationCodeResult(code, expiryTime);
+        }
+
+        public static ValidationCodeResult GenerateCode(string text, int secretKey, int codeLength = 6)
+        {
+            ValidateCodeLength(codeLength);
+
+            var now = DateTime.UtcNow;
+            var expiryTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc).AddHours(1);
+            expiryTime = (expiryTime - now).TotalMinutes < 10 ? expiryTime.AddHours(1) : expiryTime;
+
+            var code = Generate(text, secretKey, expiryTime, codeLength);
+
+            return new ValidationCodeResult(code, expiryTime);
         }
 
         public static bool ValidateCode(string text, int secretKey, string code, DateTime expiryTime, int codeLength = 6)
@@ -43,6 +57,16 @@ namespace Clear.Tools
             {
                 return false;
             }
+
+            var generatedCode = Generate(text, secretKey, expiryTime, codeLength);
+            return generatedCode == code;
+        }
+
+        public static bool ValidateCode(string text, int secretKey, string code, int codeLength = 6)
+        {
+            var now = DateTime.UtcNow;
+            var nextHour = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc).AddHours(1);
+            var expiryTime = (nextHour - now).TotalMinutes < 10 ? nextHour.AddHours(1) : nextHour;
 
             var generatedCode = Generate(text, secretKey, expiryTime, codeLength);
             return generatedCode == code;
