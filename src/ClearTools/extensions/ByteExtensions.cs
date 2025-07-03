@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ClearTools.extensions
+namespace ClearTools.Extensions
 {
     /// <summary>
     /// Extension methods for byte arrays.

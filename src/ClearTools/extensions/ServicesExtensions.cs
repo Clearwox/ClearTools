@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace ClearTools.extensions
+namespace ClearTools.Extensions
 {
     enum ServiceLifetimeOption
     {
@@ -13,7 +13,7 @@ namespace ClearTools.extensions
         Transient
     }
 
-    public static class ServiceCollectionExtensions
+    public static class ServicesExtensions
 
     {
         public static IServiceCollection AddSingletonServicesByInterface<T>(this IServiceCollection services, Assembly? assembly = null) where T : class
