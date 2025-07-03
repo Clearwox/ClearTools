@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace ClearTools.extensions
+namespace ClearTools.Extensions
 {
     /// <summary>
     /// Extension methods for strings.
