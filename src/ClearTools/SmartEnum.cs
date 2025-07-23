@@ -1,72 +1,42 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Clear
 {
-    public interface ISmartEnum<out TEnum> where TEnum : Enum
+    public abstract class SmartEnum<TEnum> where TEnum : SmartEnum<TEnum>
     {
-        string Name { get; }
-        TEnum Value { get; }
-    }
+        public string Name { get; }
+        public int Value { get; }
 
-    public abstract class SmartEnum<TEnum> where TEnum : Enum
-    {
-        public string Name { get; private set; }
-        public TEnum Value { get; private set; }
-
-        protected SmartEnum(string name, TEnum value)
+        protected SmartEnum(string name, int value)
         {
             Name = name;
             Value = value;
+            Register((TEnum)this);
         }
 
-        public override bool Equals(object obj)
+        private static readonly Dictionary<int, TEnum> _byValue = new Dictionary<int, TEnum>();
+        private static readonly Dictionary<string, TEnum> _byName = new Dictionary<string, TEnum>(StringComparer.OrdinalIgnoreCase);
+
+        private static void Register(TEnum instance)
         {
-            if (obj is SmartEnum<TEnum> other)
-            {
-                return Value.Equals(other.Value);
-            }
-            return false;
+            _byValue[instance.Value] = instance;
+            _byName[instance.Name] = instance;
         }
 
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
+        public static IEnumerable<TEnum> List() => _byValue.Values;
 
-        public override string ToString()
-        {
-            return Name;
-        }
-    }
+        public static TEnum FromValue(int value) =>
+            _byValue.TryGetValue(value, out var result) ? result : throw new ArgumentException($"No SmartEnum with value {value}");
 
-    public abstract class SmartEnums<TEnum> where TEnum : Enum
-    {
-        public string Name { get; private set; }
-        public TEnum Value { get; private set; }
+        public static TEnum FromName(string name) =>
+            _byName.TryGetValue(name, out var result) ? result : throw new ArgumentException($"No SmartEnum with name '{name}'");
 
-        protected SmartEnums(string name, TEnum value)
-        {
-            Name = name;
-            Value = value;
-        }
+        public override string ToString() => Name;
 
-        public override bool Equals(object obj)
-        {
-            if (obj is SmartEnum<TEnum> other)
-            {
-                return Value.Equals(other.Value);
-            }
-            return false;
-        }
+        public override bool Equals(object obj) =>
+            obj is SmartEnum<TEnum> other && Value == other.Value;
 
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return Name;
-        }
+        public override int GetHashCode() => Value.GetHashCode();
     }
 }
