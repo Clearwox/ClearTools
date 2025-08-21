@@ -32,7 +32,7 @@ namespace Clear.Tools
                 .Trim();
 
         public static string StripSymbols(string text)
-        => Regex.Replace(text, @"[^a-zA-Z0-9]", string.Empty);
+        => Regex.Replace(text, @"[^a-zA-Z0-9\s]", string.Empty);
 
         public static string StripSymbolsAndHTML(string htmlString)
         => StripSymbols(StripHTML(htmlString));

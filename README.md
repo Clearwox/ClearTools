@@ -20,9 +20,9 @@ using ClearTools.Extensions;
 using Clear.Tools;
 
 // String extensions
-string text = "Hello123World!";
+string text = "Hello 123 World!";
 int number = text.ToInt32(); // Extracts numbers: 123
-string cleaned = text.StripSymbols(); // Removes symbols: "Hello123World"
+string cleaned = StringUtility.StripSymbols(text); // Removes symbols, preserves spaces: "Hello 123 World"
 
 // Image processing
 var scaledImage = ImageUtility.ScaleImage(originalImage, 800, 600);
@@ -61,7 +61,7 @@ string urlKey = StringUtility.GenerateUrlKey("My Blog Post Title!"); // "my-blog
 
 // HTML and symbol stripping
 string cleanText = StringUtility.StripHTML("<p>Hello <b>World</b></p>"); // "Hello World"
-string alphanumeric = StringUtility.StripSymbols("Hello@World!123"); // "HelloWorld123"
+string alphanumeric = StringUtility.StripSymbols("Hello @World! 123"); // "Hello World 123"
 
 // Date-based unique identifiers
 string dateCode = StringUtility.GetDateCode(); // File time-based code
@@ -167,7 +167,7 @@ bool equals = "Hello".EqualsNoCase("HELLO"); // true
 
 // Number and symbol extraction
 string numbers = "abc123def456".ExtractNumbers(); // "123456"
-string clean = "Hello@World!".StripSymbols(); // "HelloWorld"
+string clean = "Hello;World*".StripSymbols(); // "HelloWorld" (removes specific symbols)
 
 // Type conversions
 int number = "abc123".ToInt32(); // 123
@@ -299,7 +299,7 @@ client.DefaultRequestHeaders.Add("key", "your_secret_api_key");
 dotnet add package ClearTools
 
 # Via PackageReference  
-<PackageReference Include="ClearTools" Version="3.0.7" />
+<PackageReference Include="ClearTools" Version="3.0.9" />
 ```
 
 ### Dependencies

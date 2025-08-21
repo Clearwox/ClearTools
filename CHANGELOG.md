@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.9] - 2025-08-21
+### Fixed
+- Fixed StringUtility.StripSymbols method to preserve spaces between alphanumeric characters
+- Updated regex pattern from `[^a-zA-Z0-9]` to `[^a-zA-Z0-9\s]` to retain whitespace
+- Enhanced test coverage with additional test cases for space preservation
+
+### Changed
+- Improved StringUtility.StripSymbols behavior for better text processing
+
 ## [3.0.8] - 2025-07-03
 ### Added
 - Key Vault functionality: Extension on IHostBuilder for Azure Key Vault integration

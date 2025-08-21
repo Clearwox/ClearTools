@@ -45,6 +45,20 @@ public class StringUtilityTests
     }
 
     [Fact]
+    public void StripSymbols_ShouldPreserveSpaces()
+    {
+        var result = StringUtility.StripSymbols("Hello World! @#$%");
+        Assert.Equal("Hello World ", result);
+    }
+
+    [Fact]
+    public void StripSymbols_ShouldPreserveAlphanumericAndSpaces()
+    {
+        var result = StringUtility.StripSymbols("Test 123 String @#$% 456");
+        Assert.Equal("Test 123 String  456", result);
+    }
+
+    [Fact]
     public void GetSubstring_ShouldReturnSubstring()
     {
         var result = StringUtility.GetSubstring("TestString", 4);

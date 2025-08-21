@@ -76,13 +76,13 @@ string tags = StringUtility.GenerateTags("tag1", "tag2", "tag3");
 string cleanText = StringUtility.StripHTML("<p>Hello <b>World</b></p>");
 // Result: "Hello World"
 
-// Strip symbols from text
-string cleanSymbols = StringUtility.StripSymbols("Hello@World#2023!");
-// Result: "HelloWorld2023"
+// Strip symbols from text (preserves spaces)
+string cleanSymbols = StringUtility.StripSymbols("Hello @World# 2023!");
+// Result: "Hello World 2023"
 
-// Combine both operations
-string clean = StringUtility.StripSymbolsAndHTML("<p>Hello@World#2023!</p>");
-// Result: "HelloWorld2023"
+// Combine both operations  
+string clean = StringUtility.StripSymbolsAndHTML("<p>Hello @World# 2023!</p>");
+// Result: "Hello World 2023"
 ```
 
 #### String Manipulation
@@ -208,9 +208,12 @@ string toggledSingle = "".Toggle("Default Value");
 bool found = text.Search("WORLD");
 // Result: true
 
-// Strip symbols (enhanced version)
+// Strip specific symbols (extension method - preserves spaces and other characters)
 string clean = text.StripSymbols();
-// Removes: ;\/:"<>|&'+`',/()[]{}\"#*
+// Removes only: ;\/:"<>|&'+`',/()[]{}\"#*
+// Preserves: spaces, letters, numbers, and other symbols not in the list
+
+// Note: StringUtility.StripSymbols() removes ALL symbols except alphanumeric and spaces
 
 // Extract only numbers
 string numbers = "Price: $123.45".ExtractNumbers();
