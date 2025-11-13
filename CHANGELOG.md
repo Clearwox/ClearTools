@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2025-11-13
+### Changed
+- **BREAKING**: Renamed `SmartEnum.FromValue()` to `SmartEnum.Parse(int value)` for better API consistency
+- **BREAKING**: Renamed `SmartEnum.FromName()` to `SmartEnum.Parse(string name)` for better API consistency
+
+### Fixed
+- Fixed SmartEnum static constructor initialization issues
+- Added explicit static constructor invocation in `List()`, `Parse(int)`, and `Parse(string)` methods to ensure proper enum registration
+- Resolved potential race conditions in SmartEnum initialization
+
 ## [3.0.9] - 2025-08-21
 ### Fixed
 - Fixed StringUtility.StripSymbols method to preserve spaces between alphanumeric characters

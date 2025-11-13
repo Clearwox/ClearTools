@@ -285,10 +285,50 @@ client.DefaultRequestHeaders.Add("key", "your_secret_api_key");
 
 ## 📊 Data Models
 
+### Smart Enums (`SmartEnum<TEnum>`)
+
+Type-safe enumeration base class with value and name support:
+
+```csharp
+// Define your SmartEnum
+public class OrderStatus : SmartEnum<OrderStatus>
+{
+    public static readonly OrderStatus Pending = new OrderStatus("Pending", 1);
+    public static readonly OrderStatus Processing = new OrderStatus("Processing", 2);
+    public static readonly OrderStatus Shipped = new OrderStatus("Shipped", 3);
+    public static readonly OrderStatus Delivered = new OrderStatus("Delivered", 4);
+    
+    private OrderStatus(string name, int value) : base(name, value) { }
+}
+
+// Usage examples
+var status = OrderStatus.Parse(2); // Get by value: Processing
+var statusByName = OrderStatus.Parse("Shipped"); // Get by name: Shipped
+
+// List all values
+foreach (var status in OrderStatus.List())
+{
+    Console.WriteLine($"{status.Name}: {status.Value}");
+}
+
+// Type-safe comparisons
+OrderStatus current = OrderStatus.Processing;
+if (current.Equals(OrderStatus.Processing))
+{
+    Console.WriteLine("Order is being processed");
+}
+```
+
+**Features:**
+- Type-safe enumeration pattern
+- Parse by value or name (case-insensitive)
+- List all enum values
+- Strongly-typed with compile-time safety
+- Thread-safe initialization
+
 - **`ValidationCodeResult`**: OTP generation results with code and expiry
 - **`CaptcherResponse`**: Google reCAPTCHA validation response
 - **EditorJS Models**: Complete data structures for EditorJS content parsing
-- **Smart Enums**: Type-safe enumeration base classes
 
 ## 📦 Installation & Setup
 
@@ -299,7 +339,7 @@ client.DefaultRequestHeaders.Add("key", "your_secret_api_key");
 dotnet add package ClearTools
 
 # Via PackageReference  
-<PackageReference Include="ClearTools" Version="3.0.9" />
+<PackageReference Include="ClearTools" Version="3.1.0" />
 ```
 
 ### Dependencies

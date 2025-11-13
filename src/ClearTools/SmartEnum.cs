@@ -24,13 +24,26 @@ namespace Clear
             _byName[instance.Name] = instance;
         }
 
-        public static IEnumerable<TEnum> List() => _byValue.Values;
+        public static IEnumerable<TEnum> List()
+        {
+            // Force static constructor to run for TEnum
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(TEnum).TypeHandle);
+            return _byValue.Values;
+        }
 
-        public static TEnum FromValue(int value) =>
-            _byValue.TryGetValue(value, out var result) ? result : throw new ArgumentException($"No SmartEnum with value {value}");
+        public static TEnum Parse(int value)
+        {
+            // Force static constructor to run for TEnum
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(TEnum).TypeHandle);
+            return _byValue.TryGetValue(value, out var result) ? result : throw new ArgumentException($"No SmartEnum with value {value}");
+        }
 
-        public static TEnum FromName(string name) =>
-            _byName.TryGetValue(name, out var result) ? result : throw new ArgumentException($"No SmartEnum with name '{name}'");
+        public static TEnum Parse(string name)
+        {
+            // Force static constructor to run for TEnum
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(TEnum).TypeHandle);
+            return _byName.TryGetValue(name, out var result) ? result : throw new ArgumentException($"No SmartEnum with name '{name}'");
+        }
 
         public override string ToString() => Name;
 
