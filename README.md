@@ -326,6 +326,46 @@ if (current.Equals(OrderStatus.Processing))
 - Strongly-typed with compile-time safety
 - Thread-safe initialization
 
+### Fluent Dictionary (`FluentDictionary<TKey, TValue>`)
+
+Chainable dictionary operations with fluent API:
+
+```csharp
+using Clear;
+
+// Create and populate in one fluent chain
+var config = new FluentDictionary<string, string>()
+    .Add("host", "localhost")
+    .Add("port", "5432")
+    .Add("database", "mydb")
+    .Add("username", "admin");
+
+// Use the static factory method
+var settings = FluentDictionary<string, int>.Create("timeout", 30)
+    .Add("retries", 3)
+    .Add("maxConnections", 100);
+
+// Chain Add and Remove operations
+var userPrefs = new FluentDictionary<string, bool>()
+    .Add("darkMode", true)
+    .Add("notifications", true)
+    .Add("autoSave", false)
+    .Remove("autoSave")
+    .Add("autoSave", true);
+
+// All Dictionary<TKey, TValue> methods available
+bool hasKey = config.ContainsKey("host");
+bool hasValue = config.TryGetValue("port", out string portValue);
+```
+
+**Features:**
+- Fluent, chainable API for dictionary operations
+- Returns `this` for method chaining on `Add()` and `Remove()`
+- Static `Create()` factory method for initialization
+- Inherits all standard `Dictionary<TKey, TValue>` functionality
+- Type-safe with full generic support
+- Simplifies builder pattern and configuration setup
+
 - **`ValidationCodeResult`**: OTP generation results with code and expiry
 - **`CaptcherResponse`**: Google reCAPTCHA validation response
 - **EditorJS Models**: Complete data structures for EditorJS content parsing

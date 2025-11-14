@@ -46,7 +46,8 @@ public class KeyVaultExtensionsTests
         var services = new ServiceCollection();
         var mockConfiguration = new Mock<IConfigurationManager>();
         var mockEnvironment = new Mock<IHostEnvironment>();
-        mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
+        // Mock the EnvironmentName property instead of IsDevelopment() extension method
+        mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
         
         var mockBuilder = new Mock<IHostApplicationBuilder>();
         mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
@@ -90,7 +91,8 @@ public class KeyVaultExtensionsTests
         mockConfiguration.Setup(x => x["OptionalValue"]).Returns("3.14");
         
         var mockEnvironment = new Mock<IHostEnvironment>();
-        mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
+        // Mock the EnvironmentName property instead of IsDevelopment() extension method
+        mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
         
         var mockBuilder = new Mock<IHostApplicationBuilder>();
         mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
@@ -203,18 +205,18 @@ public class KeyVaultExtensionsTests
             var services = new ServiceCollection();
             var mockConfiguration = new Mock<IConfigurationManager>();
             var mockEnvironment = new Mock<IHostEnvironment>();
-            mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
+            // Mock the EnvironmentName property instead of IsDevelopment() extension method
+            mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
             
             var mockBuilder = new Mock<IHostApplicationBuilder>();
             mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
             mockBuilder.Setup(x => x.Configuration).Returns(mockConfiguration.Object);
             mockBuilder.Setup(x => x.Services).Returns(services);
 
-            // Act
+            // Act - skipDevelopment defaults to true, which skips Key Vault and uses environment variables
             var result = mockBuilder.Object.AddKeyVaultForAzureFunctions<TestSettings>(
                 "https://test.vault.azure.net/", 
-                out var settings, 
-                skipDevelopment: false
+                out var settings
             );
 
             // Assert

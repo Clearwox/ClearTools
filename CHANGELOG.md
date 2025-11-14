@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.1] - 2025-11-14
+### Added
+- **NEW**: `FluentDictionary<TKey, TValue>` class for fluent dictionary operations
+  - Chainable `Add()` and `Remove()` methods that return the dictionary instance
+  - Static `Create()` factory method for convenient initialization
+  - Inherits all base `Dictionary<TKey, TValue>` functionality
+- Comprehensive unit tests for `FluentDictionary` (20+ test cases covering all scenarios)
+- Comprehensive unit tests for `SmartEnum` (20+ test cases covering parsing, equality, and type safety)
+
+### Fixed
+- Fixed `KeyVaultExtensionsTests` to properly mock `IHostEnvironment.EnvironmentName` property
+- Updated test mocking from deprecated `IsDevelopment()` extension method to direct `EnvironmentName` property access
+- Improved test reliability for Azure Key Vault configuration tests
+
+### Changed
+- Enhanced test coverage for core utility classes
+- Improved code quality and maintainability
+
 ## [3.1.0] - 2025-11-13
 ### Changed
 - **BREAKING**: Renamed `SmartEnum.FromValue()` to `SmartEnum.Parse(int value)` for better API consistency
