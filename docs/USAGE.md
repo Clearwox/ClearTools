@@ -984,6 +984,311 @@ public class EmailService : IApplicationService { }
 services.AddScopedServicesByInterface<IApplicationService>();
 ```
 
+### AppConfigurationExtensions
+
+Comprehensive Azure App Configuration integration for configuration management with support for labels, key filters, feature flags, and automatic refresh.
+
+```csharp
+using ClearTools.Extensions;
+
+// Define your settings class with regular configuration and feature flags
+public class AppSettings
+{
+    public string DatabaseConnectionString { get; set; }
+    
+    // Use custom key mapping
+    [AppConfigurationKey("api-key")]
+    public string ApiKey { get; set; }
+    
+    public string EmailServiceUrl { get; set; }
+    
+    public int MaxRetryCount { get; set; }
+    
+    // Feature flags - must be bool or bool?
+    [FeatureFlag("enable-new-ui")]
+    public bool NewUiEnabled { get; set; }
+    
+    [FeatureFlag("beta-features")]
+    public bool? BetaFeaturesEnabled { get; set; }
+}
+
+// For ASP.NET Web Applications (uses IConfiguration) - Endpoint + Managed Identity
+var builder = WebApplication.CreateBuilder(args);
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    appConfigEndpoint: "https://myapp.azconfig.io",
+    out AppSettings settings,
+    label: "Production",  // or null for default label
+    keyFilter: "MyApp:*", // or null for all keys
+    skipDevelopment: true
+);
+
+// For ASP.NET Web Applications - Connection String (flexible authentication)
+var builder = WebApplication.CreateBuilder(args);
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    connectionString: "Endpoint=https://myapp.azconfig.io;Id=xxx;Secret=xxx",
+    out AppSettings settings,
+    label: "Staging",
+    keyFilter: "MyApp:Database:*", // Nested key filter
+    skipDevelopment: true
+);
+
+// For Azure Functions (direct ConfigurationClient access) - Endpoint + Managed Identity
+var hostBuilder = new HostBuilder();
+hostBuilder.ConfigureFunctionsWorkerDefaults()
+    .AddAppConfigurationForAzureFunctions<AppSettings>(
+        appConfigEndpoint: "https://myapp.azconfig.io",
+        out AppSettings functionSettings,
+        label: "Production",
+        skipDevelopment: true
+    );
+
+// For Azure Functions - Connection String
+var hostBuilder = new HostBuilder();
+hostBuilder.ConfigureFunctionsWorkerDefaults()
+    .AddAppConfigurationForAzureFunctions<AppSettings>(
+        connectionString: "Endpoint=https://myapp.azconfig.io;Id=xxx;Secret=xxx",
+        out AppSettings functionSettings,
+        label: null, // Use default label
+        keyFilter: null, // Get all keys
+        skipDevelopment: true
+    );
+
+// Direct App Configuration access (async)
+AppSettings directSettings = await AppConfigurationExtensions
+    .CreateSettingsFromAppConfigurationAsync<AppSettings>(
+        "https://myapp.azconfig.io",
+        label: "Production",
+        keyFilter: "MyApp:*"
+    );
+
+// Direct App Configuration access (sync)
+AppSettings syncSettings = AppConfigurationExtensions
+    .CreateSettingsFromAppConfiguration<AppSettings>(
+        "https://myapp.azconfig.io",
+        label: "Production"
+    );
+```
+
+#### App Configuration Key Attribute
+
+Use the `AppConfigurationKeyAttribute` to map properties to different App Configuration key names:
+
+```csharp
+public class Settings
+{
+    // Maps to "DatabaseConnectionString" key
+    public string DatabaseConnectionString { get; set; }
+    
+    // Maps to "custom-api-key" key
+    [AppConfigurationKey("custom-api-key")]
+    public string ApiKey { get; set; }
+    
+    // Maps to "MyApp:Email:Url" key
+    [AppConfigurationKey("MyApp:Email:Url")]
+    public string EmailUrl { get; set; }
+}
+```
+
+#### Feature Flag Attribute
+
+Use the `FeatureFlagAttribute` to map boolean properties to App Configuration feature flags:
+
+```csharp
+public class FeatureSettings
+{
+    // Maps to feature flag "enable-dark-mode"
+    [FeatureFlag("enable-dark-mode")]
+    public bool DarkModeEnabled { get; set; }
+    
+    // Maps to feature flag "experimental-features" (nullable)
+    [FeatureFlag("experimental-features")]
+    public bool? ExperimentalEnabled { get; set; }
+}
+```
+
+**Important Notes:**
+- Feature flags can ONLY be applied to `bool` or `bool?` properties
+- Using `[FeatureFlag]` on non-boolean properties throws `InvalidOperationException`
+- Feature flags use a special key format in App Configuration: `.appconfig.featureflag/{flagName}`
+
+#### Configuration Refresh
+
+Configure automatic configuration refresh for dynamic updates:
+
+```csharp
+// Create refresh options
+var refreshOptions = new AppConfigurationRefreshOptions
+{
+    EnableRefresh = true,
+    RefreshInterval = TimeSpan.FromMinutes(5), // Minimum recommended: 30 seconds
+    SentinelKeys = new[] 
+    { 
+        "AppSettings:Version",  // Common pattern: version key
+        "Config:Sentinel",      // Common pattern: sentinel/trigger key
+        "App:RefreshKey"        // Common pattern: refresh trigger
+    },
+    OnRefreshError = null // Silent by default (no-op)
+};
+
+// Apply refresh options to web application
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    appConfigEndpoint: "https://myapp.azconfig.io",
+    out AppSettings settings,
+    refreshOptions: refreshOptions
+);
+
+// Custom error handler for refresh failures
+var refreshWithErrorHandler = new AppConfigurationRefreshOptions
+{
+    EnableRefresh = true,
+    RefreshInterval = TimeSpan.FromMinutes(2),
+    SentinelKeys = new[] { "Config:Version" },
+    OnRefreshError = ex => 
+    {
+        // Log error or take custom action
+        Console.WriteLine($"Config refresh failed: {ex.Message}");
+        // Application continues with cached values
+    }
+};
+```
+
+**Refresh Best Practices:**
+- **Minimum Interval**: Use at least 30 seconds to avoid Azure App Configuration throttling
+- **Recommended Interval**: 1-5 minutes for most production scenarios
+- **Sentinel Keys**: Use dedicated keys that change only when config should refresh
+- **Error Handling**: Default is silent (null handler); opt-in to custom logging/alerting
+- **Rate Limits**: Be aware of Azure App Configuration service tier limits
+
+#### Labels and Environments
+
+Use labels to maintain environment-specific configurations:
+
+```csharp
+// Production environment
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    "https://myapp.azconfig.io",
+    out var prodSettings,
+    label: "Production"  // Reads keys with "Production" label
+);
+
+// Staging environment
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    "https://myapp.azconfig.io",
+    out var stagingSettings,
+    label: "Staging"  // Reads keys with "Staging" label
+);
+
+// Default label (no label)
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    "https://myapp.azconfig.io",
+    out var defaultSettings,
+    label: null  // Reads keys with no label
+);
+```
+
+#### Key Filters
+
+Use key filters to load specific subsets of configuration:
+
+```csharp
+// Load all keys
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    "https://myapp.azconfig.io",
+    out var allSettings,
+    keyFilter: null  // or "*"
+);
+
+// Load keys with specific prefix
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    "https://myapp.azconfig.io",
+    out var appSettings,
+    keyFilter: "MyApp:*"  // Loads MyApp:Database, MyApp:Email, etc.
+);
+
+// Load nested keys
+builder.AddAppConfigurationForWebApplication<DatabaseSettings>(
+    "https://myapp.azconfig.io",
+    out var dbSettings,
+    keyFilter: "MyApp:Database:*"  // Loads MyApp:Database:ConnectionString, etc.
+);
+```
+
+#### Authentication Methods
+
+**Managed Identity (Recommended for Azure environments):**
+```csharp
+// Uses DefaultAzureCredential (Managed Identity, Azure CLI, etc.)
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    appConfigEndpoint: "https://myapp.azconfig.io",
+    out AppSettings settings,
+    credential: new DefaultAzureCredential() // Optional - used by default
+);
+```
+
+**Connection String (Flexible for all environments):**
+```csharp
+// Uses connection string with access key
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    connectionString: configuration["AppConfigConnectionString"],
+    out AppSettings settings
+);
+```
+
+**Best Practice:** Use Managed Identity (endpoint + credential) in Azure environments for better security. Connection strings are suitable for local development, testing, or non-Azure environments.
+
+#### Multiple Settings Objects with Different Configurations
+
+Load different settings objects with different labels or filters:
+
+```csharp
+// Database settings with Production label
+builder.AddAppConfigurationForWebApplication<DatabaseSettings>(
+    "https://myapp.azconfig.io",
+    out var dbSettings,
+    label: "Production",
+    keyFilter: "MyApp:Database:*"
+);
+
+// Feature flags with Staging label
+builder.AddAppConfigurationForWebApplication<FeatureSettings>(
+    "https://myapp.azconfig.io",
+    out var features,
+    label: "Staging",
+    keyFilter: null
+);
+
+// Email settings with default label
+builder.AddAppConfigurationForWebApplication<EmailSettings>(
+    "https://myapp.azconfig.io",
+    out var emailSettings,
+    label: null,
+    keyFilter: "MyApp:Email:*"
+);
+```
+
+Each settings object is registered as a singleton in dependency injection and can be injected independently.
+
+#### Important Notes
+
+**Case Sensitivity:**
+- Azure App Configuration keys are **case-sensitive**
+- `DatabaseConnectionString` ≠ `databaseconnectionstring`
+- Ensure exact key name matches in your settings classes
+
+**Key Naming Conventions:**
+- Use hierarchical keys with colons: `MyApp:Database:ConnectionString`
+- Use hyphens in feature flag names: `enable-new-ui`
+- Maintain consistent naming across environments
+
+**When to Use App Configuration vs Key Vault:**
+| Use App Configuration | Use Key Vault |
+|----------------------|---------------|
+| Application settings and configuration | Secrets, certificates, and keys |
+| Feature flags | API keys and passwords |
+| Environment-specific values | Connection strings with credentials |
+| Frequently changing values with refresh | Rarely changing sensitive data |
+| Non-sensitive configuration | Highly sensitive data requiring audit logs |
+
 ## Enums
 
 ### ImageSizePreference

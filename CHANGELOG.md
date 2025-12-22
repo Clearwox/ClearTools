@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2025-12-22
+### Added
+- **NEW**: Comprehensive Azure App Configuration integration (`AppConfigurationExtensions`)
+  - Dual authentication support: endpoint + credential (Managed Identity) or connection string
+  - Label-based environment-specific configuration (Production, Staging, etc.)
+  - Key filter support with wildcard patterns (`MyApp:*`)
+  - Attribute-based feature flag integration with `[FeatureFlag]` attribute
+    - Runtime validation ensuring feature flags only on bool/bool? properties
+    - Automatic feature flag JSON parsing from Azure App Configuration
+  - Optional configuration refresh with sentinel keys and custom intervals
+    - User-controlled error handling (silent by default, custom handler support)
+    - Minimum 30-second refresh interval recommended
+  - Custom key mapping with `[AppConfigurationKey]` attribute
+  - Development environment fallback to environment variables
+  - Automatic type conversion with comprehensive error handling
+  - Singleton DI registration with fluent API support
+- Extension methods for both Web Applications and Azure Functions
+  - `AddAppConfigurationForWebApplication<T>()` - IConfiguration integration
+  - `AddAppConfigurationForAzureFunctions<T>()` - Direct ConfigurationClient access
+  - `CreateSettingsFromAppConfigurationAsync<T>()` - Standalone async usage
+  - `CreateSettingsFromAppConfiguration<T>()` - Standalone sync usage
+- New NuGet dependencies:
+  - `Azure.Data.AppConfiguration` (1.4.1)
+  - `Microsoft.Extensions.Configuration.AzureAppConfiguration` (8.0.0)
+- Comprehensive test coverage (18 unit tests) covering all scenarios
+- Extensive XML documentation with usage examples and best practices
+
+### Documentation
+- Added detailed App Configuration examples in USAGE.md
+- Documented authentication method recommendations (Managed Identity vs connection string)
+- Refresh interval guidance and sentinel key patterns
+- Case-sensitivity warnings for configuration keys
+- SDK limitation notes for refresh error handling
+
 ## [3.1.1] - 2025-11-14
 ### Added
 - **NEW**: `FluentDictionary<TKey, TValue>` class for fluent dictionary operations

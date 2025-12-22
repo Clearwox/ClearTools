@@ -5,7 +5,7 @@
 		<!--<ImplicitUsings>enable</ImplicitUsings>-->
 		<Nullable>enable</Nullable>
 
-		<Version>3.1.1</Version>
+		<Version>3.2.0</Version>
 		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 
@@ -18,9 +18,10 @@
 		<Description>
 			A set of general utilities suitable for any .net project.
 			These utilities include, string manipulation, image,
-			cryptography, http client, number base utility.
+			cryptography, http client, number base utility, Azure App Configuration,
+			Azure Key Vault integration, and more.
 		</Description>
-		<PackageTags>string utility, image, file, azure storage, cryptography, http client, number base utility</PackageTags>
+		<PackageTags>string utility, image, file, azure storage, azure app configuration, azure key vault, cryptography, http client, number base utility, feature flags</PackageTags>
 
 		<PackageProjectUrl>https://github.com/Clearwox/ClearTools/</PackageProjectUrl>
 		<License>https://github.com/Clearwox/ClearTools?tab=MIT-1-ov-file</License>
@@ -35,10 +36,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Azure.Data.AppConfiguration" Version="1.4.1" />
 		<PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />
 		<PackageReference Include="Azure.Identity" Version="1.15.0" />
 		<PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

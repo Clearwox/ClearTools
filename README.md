@@ -190,9 +190,81 @@ string dateTimeStr = now.ToDateTimeString(); // "15/Aug/2025 14:30:15"
 
 ## ☁️ Azure Integration
 
+### Azure App Configuration Integration (`AppConfigurationExtensions`)
+
+**NEW in v3.2.0** - Comprehensive Azure App Configuration support with advanced features:
+
+```csharp
+// Define settings class with regular config and feature flags
+public class AppSettings
+{
+    public string DatabaseConnectionString { get; set; }
+    
+    [AppConfigurationKey("MyApp:ApiKey")]
+    public string ApiKey { get; set; }
+    
+    public int MaxRetries { get; set; }
+    
+    // Feature flags (bool/bool? only)
+    [FeatureFlag("enable-new-ui")]
+    public bool NewUiEnabled { get; set; }
+    
+    [FeatureFlag("beta-features")]
+    public bool? BetaFeaturesEnabled { get; set; }
+}
+
+// Web Applications - Using Managed Identity (recommended for Azure)
+var builder = WebApplication.CreateBuilder(args);
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    appConfigEndpoint: new Uri("https://myapp.azconfig.io"),
+    out AppSettings settings,
+    label: "Production",           // Environment-specific config
+    keyFilter: "MyApp:*",          // Filter keys by prefix
+    credential: new DefaultAzureCredential()
+);
+
+// Web Applications - Using Connection String (flexible)
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    connectionString: Environment.GetEnvironmentVariable("AppConfigConnectionString"),
+    out AppSettings settings,
+    label: "Staging"
+);
+
+// Azure Functions - Direct client access with environment fallback
+hostBuilder.AddAppConfigurationForAzureFunctions<AppSettings>(
+    appConfigEndpoint: new Uri("https://myapp.azconfig.io"),
+    out AppSettings functionSettings,
+    skipDevelopment: true          // Uses environment variables in dev
+);
+
+// Optional: Configuration refresh with sentinel keys
+var refreshOptions = new AppConfigurationRefreshOptions
+{
+    EnableRefresh = true,
+    RefreshInterval = TimeSpan.FromMinutes(5),      // Minimum 30s recommended
+    SentinelKeys = new[] { "AppSettings:Version" }, // Trigger refresh
+    OnRefreshError = ex => logger.LogWarning(ex, "Config refresh failed")
+};
+
+builder.AddAppConfigurationForWebApplication<AppSettings>(
+    appConfigEndpoint: new Uri("https://myapp.azconfig.io"),
+    out AppSettings settings,
+    refreshOptions: refreshOptions
+);
+```
+
+**Key Features:**
+- ✅ Label-based environment configs (Production, Staging, Development)
+- ✅ Key filtering with wildcards (`MyApp:*`, `Database:*`)
+- ✅ Attribute-based feature flags with bool validation
+- ✅ Optional auto-refresh with sentinel keys
+- ✅ Managed Identity or connection string authentication
+- ✅ Development fallback to environment variables
+- ✅ Automatic type conversion and error handling
+
 ### Key Vault Integration (`KeyVaultExtensions`)
 
-Robust Azure Key Vault integration for configuration management:
+Robust Azure Key Vault integration for secrets management:
 
 ```csharp
 // Define your settings class
