@@ -35,8 +35,104 @@ string hash = Crypto.EncodeSHA256("password", salt);
 var otpResult = OtpUtility.GenerateCode("user@example.com", 12345, TimeSpan.FromMinutes(5));
 ```
 
-## 📋 Table of Contents
+## � Connection String Framework
 
+**NEW!** Strongly-typed, attribute-driven configuration framework for parsing and managing connection strings and key-value configuration strings.
+
+### Key Features
+
+- ✅ **Strongly-typed** connection strings with compile-time safety
+- ✅ **Attribute-driven** property mapping with `[ConnectionStringKey]`
+- ✅ **Built-in validation** using `[Required]` attribute
+- ✅ **10+ pre-built types** for Azure and non-Azure services
+- ✅ **DI integration** via `AddConnectionString<T>()`
+- ✅ **Customizable** delimiters, escaping, and case sensitivity
+- ✅ **Bidirectional** parsing and serialization (ToString())
+- ✅ **Extensible** - easily create custom configuration types
+
+### Quick Example
+
+```csharp
+using ClearTools.Configuration.BuiltIn;
+using ClearTools.Extensions;
+
+// Parse SQL Server connection string
+var sqlConfig = new SqlServerConnectionString(
+    "Server=localhost;Database=MyDb;User Id=sa;Password=mypass");
+
+Console.WriteLine(sqlConfig.Server);   // "localhost"
+Console.WriteLine(sqlConfig.Database); // "MyDb"
+
+// Register with DI
+services.AddConnectionString<SqlServerConnectionString>(
+    configuration, "ConnectionStrings:MyDatabase");
+
+// Inject into services
+public class MyService
+{
+    public MyService(SqlServerConnectionString config)
+    {
+        _connectionString = config.ToString();
+    }
+}
+```
+
+### Built-in Connection String Types
+
+**Azure Services:**
+- `ServiceBusConnectionString` - Azure Service Bus
+- `AppConfigurationConnectionString` - Azure App Configuration
+- `KeyVaultConnectionString` - Azure Key Vault
+- `SqlServerConnectionString` - SQL Server / Azure SQL
+- `CosmosDbConnectionString` - Azure Cosmos DB
+- `BlobStorageConnectionString` - Azure Blob Storage
+
+**Non-Azure Services:**
+- `MongoDbConnectionString` - MongoDB
+- `PostgreSqlConnectionString` - PostgreSQL
+- `RedisConnectionString` - Redis
+- `RabbitMqConnectionString` - RabbitMQ
+
+### Custom Configuration Types
+
+```csharp
+public class MyServiceConfig : ConnectionStringBase
+{
+    [ConnectionStringKey("ApiUrl")]
+    [Required]
+    public string? ApiUrl { get; set; }
+    
+    [ConnectionStringKey("ApiKey")]
+    [Required]
+    public string? ApiKey { get; set; }
+    
+    [ConnectionStringKey("Timeout")]
+    public int? Timeout { get; set; }
+    
+    public MyServiceConfig(string connectionString) 
+        : base(connectionString) { }
+}
+
+// Store in Key Vault as single string
+// "ApiUrl=https://api.example.com;ApiKey=secret123;Timeout=30"
+
+// Use with DI
+services.AddConnectionString<MyServiceConfig>(keyVaultSecret);
+```
+
+### Advanced Features
+
+- **Custom delimiters**: Use `|`, `,`, or any delimiter instead of `;`
+- **Escaping support**: Include delimiters in values with `\;`
+- **Case sensitivity**: Configure case-sensitive or insensitive key matching
+- **Validation**: Required properties throw exceptions if missing
+- **Serialization**: Convert back to string with `ToString()` (excludes nulls)
+
+See [full documentation](docs/USAGE.md#connection-string-configuration-framework) for comprehensive examples.
+
+## �📋 Table of Contents
+
+- [Connection String Framework](#-connection-string-framework)
 - [Core Utilities](#-core-utilities)
 - [Extension Methods](#-extension-methods)
 - [Azure Integration](#-azure-integration)

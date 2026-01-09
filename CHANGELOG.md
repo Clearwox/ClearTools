@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-01-09
+### Added
+- **NEW**: Connection String Configuration Framework (`ClearTools.Configuration`)
+  - Strongly-typed, attribute-driven parsing and management of connection strings
+  - Core framework components:
+    - `ConnectionStringBase` - Abstract base class with reflection-based parsing and validation
+    - `ConnectionStringKeyAttribute` - Maps properties to connection string keys
+    - `RequiredAttribute` - Marks properties as mandatory (fail-fast validation)
+    - `ConnectionStringParsingOptions` - Configurable delimiter, escaping, case sensitivity
+  - 10 built-in connection string types in `ClearTools.Configuration.BuiltIn`:
+    - **Azure Services**: `ServiceBusConnectionString`, `AppConfigurationConnectionString`, `KeyVaultConnectionString`, `SqlServerConnectionString`, `CosmosDbConnectionString`, `BlobStorageConnectionString`
+    - **Non-Azure Services**: `MongoDbConnectionString`, `PostgreSqlConnectionString`, `RedisConnectionString`, `RabbitMqConnectionString`
+  - Advanced features:
+    - Custom delimiter support (default `;`, configurable to `|`, `,`, etc.)
+    - Delimiter escaping with backslash (e.g., `my\;value` includes semicolon in value)
+    - Configurable case sensitivity for key matching (default case-insensitive)
+    - Bidirectional conversion: parse from string, serialize to string with `ToString()`
+    - Automatic type conversion for int, bool, and other primitive types
+    - Only non-null properties included in `ToString()` serialization
+  - Dependency Injection integration via `ConnectionStringExtensions`:
+    - `AddConnectionString<T>(string)` - Register from raw string value
+    - `AddConnectionString<T>(IConfiguration, string)` - Register from configuration key
+    - Registers as singleton for constructor injection
+  - Comprehensive test suite (33 tests) covering parsing, validation, escaping, delimiters, case sensitivity, DI, and edge cases
+  - Full documentation in USAGE.md with examples for built-in types, custom types, DI integration, and best practices
+
+### Use Cases
+- Traditional database connection strings (SQL Server, PostgreSQL, MongoDB, Redis)
+- Azure service connection strings (Service Bus, Key Vault, Cosmos DB, Blob Storage)
+- Custom service configurations stored as single strings in Key Vault or App Configuration
+- Type-safe configuration management with compile-time property checking
+- Simplified DI registration for connection string-based configurations
+
 ## [3.2.1] - 2026-01-09
 ### Added
 - **NEW**: StringBuilder extension methods (`StringBuilderExtensions`)

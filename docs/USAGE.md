@@ -7,6 +7,7 @@ ClearTools is a comprehensive .NET utility library that provides various tools, 
 ## Table of Contents
 
 - [Installation](#installation)
+- [Connection String Configuration Framework](#connection-string-configuration-framework)
 - [String Utilities](#string-utilities)
 - [String Extensions](#string-extensions)
 - [Cryptography Tools](#cryptography-tools)
@@ -33,6 +34,332 @@ Add the ClearTools package to your project:
 
 ```xml
 <PackageReference Include="ClearTools" Version="3.0.5" />
+```
+
+## Connection String Configuration Framework
+
+The Connection String Configuration Framework provides a strongly-typed, attribute-driven approach to working with connection strings and key-value configuration strings. It supports both traditional database connection strings and custom service configurations stored as single string values (e.g., in Azure Key Vault or App Configuration).
+
+### Namespace
+```csharp
+using ClearTools.Configuration;
+using ClearTools.Configuration.BuiltIn;
+using ClearTools.Extensions;
+```
+
+### Core Concepts
+
+The framework centers around:
+- **ConnectionStringBase**: Abstract base class for all connection string types
+- **ConnectionStringKeyAttribute**: Maps properties to keys in the connection string
+- **RequiredAttribute**: Marks properties as mandatory (throws exception if missing)
+- **ConnectionStringParsingOptions**: Configures delimiter, escaping, and case sensitivity
+- **Built-in Types**: Pre-defined connection string classes for common services
+
+### Quick Start with Built-in Types
+
+#### SQL Server
+
+```csharp
+using ClearTools.Configuration.BuiltIn;
+using ClearTools.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+
+// Parse a SQL Server connection string
+var sqlConnStr = new SqlServerConnectionString(
+    "Server=localhost;Database=MyDb;User Id=sa;Password=mypass;Encrypt=true");
+
+Console.WriteLine(sqlConnStr.Server);   // "localhost"
+Console.WriteLine(sqlConnStr.Database); // "MyDb"
+
+// Register with DI
+services.AddConnectionString<SqlServerConnectionString>(
+    "Server=localhost;Database=MyDb;User Id=sa;Password=mypass");
+
+// Inject into a service
+public class MyService
+{
+    private readonly SqlServerConnectionString _config;
+    
+    public MyService(SqlServerConnectionString config)
+    {
+        _config = config;
+    }
+}
+```
+
+#### Azure Service Bus
+
+```csharp
+var serviceBusConnStr = new ServiceBusConnectionString(
+    "Endpoint=sb://myservicebus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=mykey123");
+
+Console.WriteLine(serviceBusConnStr.Endpoint);           // "sb://myservicebus.servicebus.windows.net/"
+Console.WriteLine(serviceBusConnStr.SharedAccessKeyName); // "RootManageSharedAccessKey"
+```
+
+#### Redis
+
+```csharp
+var redisConnStr = new RedisConnectionString(
+    "Host=localhost;Port=6379;Password=mypass;Ssl=true;Database=0");
+
+Console.WriteLine(redisConnStr.Host);     // "localhost"
+Console.WriteLine(redisConnStr.Port);     // 6379
+Console.WriteLine(redisConnStr.Ssl);      // true
+```
+
+### Available Built-in Types
+
+The framework includes pre-defined connection string types for:
+
+**Azure Services:**
+- `ServiceBusConnectionString` - Azure Service Bus
+- `AppConfigurationConnectionString` - Azure App Configuration
+- `KeyVaultConnectionString` - Azure Key Vault
+- `SqlServerConnectionString` - SQL Server / Azure SQL
+- `CosmosDbConnectionString` - Azure Cosmos DB
+- `BlobStorageConnectionString` - Azure Blob Storage
+
+**Non-Azure Services:**
+- `MongoDbConnectionString` - MongoDB
+- `PostgreSqlConnectionString` - PostgreSQL
+- `RedisConnectionString` - Redis
+- `RabbitMqConnectionString` - RabbitMQ
+
+### Creating Custom Connection String Types
+
+Define your own configuration types by inheriting from `ConnectionStringBase` and decorating properties with attributes:
+
+```csharp
+using ClearTools.Configuration;
+
+public class BulkSmsServiceConnectionString : ConnectionStringBase
+{
+    [ConnectionStringKey("Url")]
+    [Required]
+    public string? Url { get; set; }
+    
+    [ConnectionStringKey("Username")]
+    [Required]
+    public string? Username { get; set; }
+    
+    [ConnectionStringKey("Password")]
+    [Required]
+    public string? Password { get; set; }
+    
+    [ConnectionStringKey("Timeout")]
+    public int? Timeout { get; set; }
+    
+    public BulkSmsServiceConnectionString(string connectionString, ConnectionStringParsingOptions? options = null)
+        : base(connectionString, options)
+    {
+    }
+}
+
+// Usage
+var smsConfig = new BulkSmsServiceConnectionString(
+    "Url=https://api.sms.com;Username=myuser;Password=mypass;Timeout=30");
+```
+
+### Dependency Injection Integration
+
+#### Direct String Value
+
+```csharp
+services.AddConnectionString<SqlServerConnectionString>(
+    "Server=localhost;Database=MyDb;User Id=sa;Password=mypass");
+```
+
+#### From IConfiguration
+
+```csharp
+// In appsettings.json:
+// {
+//   "ConnectionStrings": {
+//     "MyDatabase": "Server=localhost;Database=MyDb;User Id=sa;Password=mypass"
+//   }
+// }
+
+services.AddConnectionString<SqlServerConnectionString>(
+    configuration,
+    "ConnectionStrings:MyDatabase");
+```
+
+#### With Custom Options
+
+```csharp
+var options = new ConnectionStringParsingOptions
+{
+    Delimiter = "|",
+    EnableEscaping = true,
+    KeyComparison = StringComparison.Ordinal // Case-sensitive
+};
+
+services.AddConnectionString<MyConnectionString>(connectionString, options);
+```
+
+### Advanced Features
+
+#### Custom Delimiters
+
+By default, the framework uses semicolon (`;`) as the delimiter, but you can customize this:
+
+```csharp
+var options = new ConnectionStringParsingOptions { Delimiter = "|" };
+var config = new MyConnectionString("Key1=value1|Key2=value2", options);
+```
+
+#### Escaping Delimiters in Values
+
+When escaping is enabled (default), you can include the delimiter character in values by escaping it with a backslash:
+
+```csharp
+// Value contains semicolons
+var config = new MyConnectionString(@"Server=my\;server;Database=my\;db");
+Console.WriteLine(config.Server); // "my;server"
+Console.WriteLine(config.Database); // "my;db"
+
+// Serialize back with escaping
+Console.WriteLine(config.ToString()); // "Server=my\;server;Database=my\;db"
+```
+
+#### Case-Sensitive Key Matching
+
+By default, keys are matched case-insensitively. You can change this:
+
+```csharp
+var options = new ConnectionStringParsingOptions
+{
+    KeyComparison = StringComparison.Ordinal // Case-sensitive
+};
+
+// This will throw because "server" != "Server"
+var config = new SqlServerConnectionString("server=localhost", options);
+```
+
+#### Required Properties Validation
+
+Properties marked with `[Required]` must be present in the connection string, or an exception is thrown:
+
+```csharp
+public class MyConfig : ConnectionStringBase
+{
+    [ConnectionStringKey("Server")]
+    [Required]
+    public string? Server { get; set; }
+    
+    public MyConfig(string connectionString) : base(connectionString) { }
+}
+
+// Throws InvalidOperationException: "Required key 'Server' for property 'Server' is missing..."
+var config = new MyConfig("Database=mydb");
+```
+
+#### ToString() Serialization
+
+Connection string objects can be serialized back to string format. Only non-null properties are included:
+
+```csharp
+var config = new SqlServerConnectionString(
+    "Server=localhost;Database=MyDb;User Id=sa;Password=mypass");
+
+// Remove password
+config.Password = null;
+
+// Serialize - Password will not be included
+string serialized = config.ToString();
+// "Server=localhost;Database=MyDb;User Id=sa"
+```
+
+### Best Practices
+
+#### Store in Azure Key Vault
+
+Connection strings often contain sensitive information. Store them in Azure Key Vault and retrieve them at runtime:
+
+```csharp
+// Retrieve from Key Vault
+var keyVaultClient = new SecretClient(new Uri(vaultUri), new DefaultAzureCredential());
+var secret = await keyVaultClient.GetSecretAsync("BulkSmsServiceConfig");
+
+// Parse into strongly-typed configuration
+services.AddConnectionString<BulkSmsServiceConnectionString>(secret.Value.Value);
+```
+
+#### Use with IOptions Pattern
+
+For more advanced scenarios, you can combine with the IOptions pattern:
+
+```csharp
+public class MyServiceOptions
+{
+    public SqlServerConnectionString DatabaseConfig { get; set; }
+    public RedisConnectionString CacheConfig { get; set; }
+}
+
+// In Startup.cs
+var dbConfig = new SqlServerConnectionString(configuration["ConnectionStrings:Database"]);
+var cacheConfig = new RedisConnectionString(configuration["ConnectionStrings:Cache"]);
+
+services.Configure<MyServiceOptions>(options =>
+{
+    options.DatabaseConfig = dbConfig;
+    options.CacheConfig = cacheConfig;
+});
+```
+
+#### Custom Service Configurations
+
+Not just for traditional connection strings! Use this framework for any service configuration that benefits from being stored as a single string:
+
+```csharp
+public class PaymentGatewayConfig : ConnectionStringBase
+{
+    [ConnectionStringKey("ApiUrl")]
+    [Required]
+    public string? ApiUrl { get; set; }
+    
+    [ConnectionStringKey("MerchantId")]
+    [Required]
+    public string? MerchantId { get; set; }
+    
+    [ConnectionStringKey("ApiKey")]
+    [Required]
+    public string? ApiKey { get; set; }
+    
+    [ConnectionStringKey("Timeout")]
+    public int Timeout { get; set; } = 30;
+    
+    [ConnectionStringKey("RetryCount")]
+    public int RetryCount { get; set; } = 3;
+    
+    public PaymentGatewayConfig(string connectionString) : base(connectionString) { }
+}
+
+// Store in Key Vault as single string
+// "ApiUrl=https://api.payment.com;MerchantId=12345;ApiKey=secret;Timeout=60;RetryCount=5"
+```
+
+### Migration from Existing Connection Strings
+
+If you're already using connection strings in your application, you can gradually migrate to the typed approach:
+
+```csharp
+// Before: Using raw connection strings
+var connectionString = configuration.GetConnectionString("MyDatabase");
+services.AddDbContext<MyDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// After: Using typed connection strings
+services.AddConnectionString<SqlServerConnectionString>(
+    configuration, "ConnectionStrings:MyDatabase");
+
+services.AddDbContext<MyDbContext>((serviceProvider, options) =>
+{
+    var connStr = serviceProvider.GetRequiredService<SqlServerConnectionString>();
+    options.UseSqlServer(connStr.ToString());
+});
 ```
 
 ## String Utilities
