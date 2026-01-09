@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.1] - 2026-01-09
+### Added
+- **NEW**: StringBuilder extension methods (`StringBuilderExtensions`)
+  - `AppendIfTrue()` - Conditionally append text based on boolean condition
+  - `AppendLineIfTrue()` - Conditionally append line based on boolean condition
+  - Enables fluent, readable conditional string building
+
+### Changed
+- **IMPROVED**: Azure Storage Manager API flexibility
+  - Made `folder` parameter nullable in all download methods
+  - Made `folder` parameter nullable in delete methods
+  - Allows direct container root operations without specifying folder paths
+  - Backwards compatible - existing code continues to work
+
+### Fixed
+- Improved nullable reference type annotations for Azure Storage Manager methods
+
 ## [3.2.0] - 2025-12-22
 ### Added
 - **NEW**: Comprehensive Azure App Configuration integration (`AppConfigurationExtensions`)

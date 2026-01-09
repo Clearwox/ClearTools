@@ -188,6 +188,41 @@ string dateStr = now.ToDateString(); // "15/Aug/2025"
 string dateTimeStr = now.ToDateTimeString(); // "15/Aug/2025 14:30:15"
 ```
 
+### StringBuilder Extensions (`StringBuilderExtensions`)
+
+**NEW in v3.2.1** - Fluent conditional string building:
+
+```csharp
+using System.Text;
+using ClearTools.Extensions;
+
+var sb = new StringBuilder();
+
+// Conditionally append content based on boolean conditions
+sb.AppendIfTrue(isActive, "Active")
+  .AppendIfTrue(hasWarnings, " (warnings)")
+  .AppendLineIfTrue(isComplete, "Process complete");
+
+// Example: Build dynamic messages
+bool isAdmin = true;
+bool hasErrors = false;
+string message = new StringBuilder()
+    .Append("User logged in")
+    .AppendIfTrue(isAdmin, " with admin privileges")
+    .AppendIfTrue(hasErrors, " - errors detected")
+    .ToString();
+// Result: "User logged in with admin privileges"
+
+// Example: Conditional HTML generation
+var html = new StringBuilder()
+    .Append("<div class='user'")
+    .AppendIfTrue(isPremium, " premium")
+    .AppendIfTrue(isVerified, " verified")
+    .AppendLine(">")
+    .AppendLineIfTrue(showDetails, "<p>User details...</p>")
+    .Append("</div>");
+```
+
 ## ☁️ Azure Integration
 
 ### Azure App Configuration Integration (`AppConfigurationExtensions`)

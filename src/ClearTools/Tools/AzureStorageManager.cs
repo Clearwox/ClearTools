@@ -12,7 +12,7 @@ namespace Clear.Tools
         private static BlobContainerClient CreateCloudBlobContainer(string connectionString, string containerName) 
         => new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
 
-        private static BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string folder)
+        private static BlobClient GetBlobClient(string connectionString, string containerName, string fileName, string? folder)
         {
             var blobContainer = new BlobContainerClient(connectionString, containerName);
             blobContainer.CreateIfNotExists();
@@ -97,7 +97,7 @@ namespace Clear.Tools
         #region download from azure
 
         public static void DownloadFromAzure(string connectionString, string containerName,
-            FileInfo file, string folder, CancellationToken cancellationToken = default)
+            FileInfo file, string? folder, CancellationToken cancellationToken = default)
         {
             GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(
                 file.FullName, cancellationToken: cancellationToken
@@ -105,7 +105,7 @@ namespace Clear.Tools
         }
 
         public static void DownloadFromAzure(string connectionString, string containerName,
-            FileStream file, string folder, CancellationToken cancellationToken = default)
+            FileStream file, string? folder, CancellationToken cancellationToken = default)
         {
             GetBlobClient(connectionString, containerName, file.Name, folder).DownloadTo(
                 file, cancellationToken: cancellationToken
@@ -113,7 +113,7 @@ namespace Clear.Tools
         }
 
         public static void DownloadFromAzure(string connectionString, string containerName,
-            string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default)
+            string filename, MemoryStream file, string? folder, CancellationToken cancellationToken = default)
         {
             GetBlobClient(connectionString, containerName, filename, folder).DownloadTo(
                 file, cancellationToken: cancellationToken
@@ -121,7 +121,7 @@ namespace Clear.Tools
         }
 
         public static async Task DownloadFromAzureAsync(string connectionString, string containerName,
-            FileInfo file, string folder, CancellationToken cancellationToken = default)
+            FileInfo file, string? folder, CancellationToken cancellationToken = default)
         {
             await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(
                 file.FullName, cancellationToken: cancellationToken
@@ -129,7 +129,7 @@ namespace Clear.Tools
         }
 
         public static async Task DownloadFromAzureAsync(string connectionString, string containerName,
-            FileStream file, string folder, CancellationToken cancellationToken = default)
+            FileStream file, string? folder, CancellationToken cancellationToken = default)
         {
             await GetBlobClient(connectionString, containerName, file.Name, folder).DownloadToAsync(
                 file, cancellationToken: cancellationToken
@@ -137,7 +137,7 @@ namespace Clear.Tools
         }
 
         public static async Task DownloadFromAzureAsync(string connectionString, string containerName,
-            string filename, MemoryStream file, string folder, CancellationToken cancellationToken = default)
+            string filename, MemoryStream file, string? folder, CancellationToken cancellationToken = default)
         {
             await GetBlobClient(connectionString, containerName, filename, folder).DownloadToAsync(
                 file, cancellationToken: cancellationToken
@@ -147,7 +147,7 @@ namespace Clear.Tools
         #endregion
 
         public static void DeleteFromAzure(string connectionString, string containerName, string fileName,
-            string folder, CancellationToken cancellationToken = default)
+            string? folder, CancellationToken cancellationToken = default)
         {
             BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
@@ -155,7 +155,7 @@ namespace Clear.Tools
         }
 
         public static async Task DeleteFromAzureAsync(string connectionString, string containerName,
-            string fileName, string folder, CancellationToken cancellationToken = default)
+            string fileName, string? folder, CancellationToken cancellationToken = default)
         {
             BlobContainerClient blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             var blockBlob = blobContainer.GetBlobClient($"{folder}\\{fileName}".Trim('\\'));
