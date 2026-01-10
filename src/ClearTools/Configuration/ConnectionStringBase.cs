@@ -43,7 +43,16 @@ namespace ClearTools.Configuration
         /// <summary>
         /// Gets the parsing options used for this connection string instance.
         /// </summary>
-        protected ConnectionStringParsingOptions Options { get; }
+        protected ConnectionStringParsingOptions Options { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConnectionStringBase"/> class with default options.
+        /// Use <see cref="Initialize"/> to populate properties from a connection string.
+        /// </summary>
+        protected ConnectionStringBase()
+        {
+            Options = new ConnectionStringParsingOptions();
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConnectionStringBase"/> class.
@@ -52,12 +61,37 @@ namespace ClearTools.Configuration
         /// <param name="options">Optional parsing options. If null, default options will be used.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
         /// <exception cref="InvalidOperationException">Thrown when a required property is missing from the connection string.</exception>
-        protected ConnectionStringBase(string connectionString, ConnectionStringParsingOptions? options = null)
+        public ConnectionStringBase(string connectionString, ConnectionStringParsingOptions? options = null)
+        {
+            Options = new ConnectionStringParsingOptions();
+            Initialize(connectionString, options);
+        }
+
+        /// <summary>
+        /// Initializes the connection string by parsing a raw connection string value.
+        /// Can be called on an instance created with the parameterless constructor, or to re-initialize an existing instance.
+        /// </summary>
+        /// <param name="connectionString">The raw connection string to parse.</param>
+        /// <param name="options">Optional parsing options. If null, current options will be used.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when a required property is missing from the connection string.</exception>
+        /// <example>
+        /// <code>
+        /// // Using parameterless constructor + Initialize
+        /// var connStr = new SqlServerConnectionString();
+        /// connStr.Initialize("Server=localhost;Database=MyDb;User Id=sa;Password=pass");
+        /// 
+        /// // Or using constructor (internally calls Initialize)
+        /// var connStr2 = new SqlServerConnectionString("Server=localhost;Database=MyDb;User Id=sa;Password=pass");
+        /// </code>
+        /// </example>
+        public void Initialize(string connectionString, ConnectionStringParsingOptions? options = null)
         {
             if (connectionString == null)
                 throw new ArgumentNullException(nameof(connectionString));
 
-            Options = options ?? new ConnectionStringParsingOptions();
+            if (options != null)
+                Options = options;
             
             var keyValuePairs = ParseConnectionString(connectionString);
             PopulateProperties(keyValuePairs);
@@ -243,10 +277,15 @@ namespace ClearTools.Configuration
         /// <summary>
         /// Serializes the connection string object back to its string representation.
         /// Only includes properties with non-null values.
+        /// Validates that all required properties have values before serialization.
         /// </summary>
         /// <returns>The serialized connection string.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when a required property is missing or has a null value.</exception>
         public override string ToString()
         {
+            // Validate required properties before serialization
+            ValidateRequiredPropertiesForToString();
+
             var properties = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead);
 
@@ -271,6 +310,38 @@ namespace ClearTools.Configuration
             }
 
             return string.Join(Options.Delimiter, parts);
+        }
+
+        /// <summary>
+        /// Validates that all required properties have non-null values for ToString serialization.
+        /// </summary>
+        private void ValidateRequiredPropertiesForToString()
+        {
+            var properties = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var missingProperties = new List<string>();
+
+            foreach (var property in properties)
+            {
+                var requiredAttribute = property.GetCustomAttribute<RequiredAttribute>();
+                if (requiredAttribute == null)
+                    continue;
+
+                var keyAttribute = property.GetCustomAttribute<ConnectionStringKeyAttribute>();
+                if (keyAttribute == null)
+                    continue;
+
+                var value = property.GetValue(this);
+                if (value == null || (value is string str && string.IsNullOrEmpty(str)))
+                {
+                    missingProperties.Add($"{property.Name} (key: '{keyAttribute.KeyName}')");
+                }
+            }
+
+            if (missingProperties.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot serialize connection string: Required properties are missing or have null values: {string.Join(", ", missingProperties)}");
+            }
         }
     }
 }

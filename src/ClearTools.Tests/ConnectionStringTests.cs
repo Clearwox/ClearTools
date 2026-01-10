@@ -27,6 +27,11 @@ namespace ClearTools.Tests
             [ConnectionStringKey("Timeout")]
             public int Timeout { get; set; }
 
+            // Parameterless constructor for Initialize pattern
+            public TestConnectionString()
+            {
+            }
+
             public TestConnectionString(string connectionString, ConnectionStringParsingOptions? options = null)
                 : base(connectionString, options)
             {
@@ -576,6 +581,190 @@ namespace ClearTools.Tests
             // Assert
             Assert.Null(result.Key1);
             Assert.Null(result.Key2);
+        }
+
+        #endregion
+
+        #region Initialize Method Tests
+
+        [Fact]
+        public void Initialize_WithParameterlessConstructor_PopulatesProperties()
+        {
+            // Arrange
+            var connStr = "Server=localhost;Port=5432;Database=mydb";
+            var result = new TestConnectionString();
+
+            // Act
+            result.Initialize(connStr);
+
+            // Assert
+            Assert.Equal("localhost", result.Server);
+            Assert.Equal(5432, result.Port);
+            Assert.Equal("mydb", result.Database);
+        }
+
+        [Fact]
+        public void Initialize_WithOptions_UsesProvidedOptions()
+        {
+            // Arrange
+            var connStr = "Server=localhost|Port=5432";
+            var options = new ConnectionStringParsingOptions { Delimiter = "|" };
+            var result = new TestConnectionString();
+
+            // Act
+            result.Initialize(connStr, options);
+
+            // Assert
+            Assert.Equal("localhost", result.Server);
+            Assert.Equal(5432, result.Port);
+        }
+
+        [Fact]
+        public void Initialize_CalledMultipleTimes_Reinitializes()
+        {
+            // Arrange
+            var firstConnStr = "Server=localhost;Port=5432";
+            var secondConnStr = "Server=remotehost;Port=3306";
+            var result = new TestConnectionString();
+
+            // Act
+            result.Initialize(firstConnStr);
+            Assert.Equal("localhost", result.Server);
+            Assert.Equal(5432, result.Port);
+
+            result.Initialize(secondConnStr);
+
+            // Assert
+            Assert.Equal("remotehost", result.Server);
+            Assert.Equal(3306, result.Port);
+        }
+
+        [Fact]
+        public void Initialize_NullConnectionString_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var result = new TestConnectionString();
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => result.Initialize(null!));
+        }
+
+        #endregion
+
+        #region Manual Property Setting Tests
+
+        [Fact]
+        public void ManualPropertySetting_WithoutInitialize_PropertiesAreSet()
+        {
+            // Arrange & Act
+            var result = new TestConnectionString
+            {
+                Server = "manualhost",
+                Port = 9999,
+                Database = "manualdb"
+            };
+
+            // Assert
+            Assert.Equal("manualhost", result.Server);
+            Assert.Equal(9999, result.Port);
+            Assert.Equal("manualdb", result.Database);
+        }
+
+        [Fact]
+        public void ToString_AfterManualPropertySetting_Serializes()
+        {
+            // Arrange
+            var result = new TestConnectionString
+            {
+                Server = "manualhost",
+                Port = 9999,
+                Database = "manualdb"
+            };
+
+            // Act
+            var serialized = result.ToString();
+
+            // Assert
+            Assert.Contains("Server=manualhost", serialized);
+            Assert.Contains("Port=9999", serialized);
+            Assert.Contains("Database=manualdb", serialized);
+        }
+
+        [Fact]
+        public void ToString_WithMissingRequiredProperty_ThrowsException()
+        {
+            // Arrange
+            var result = new TestConnectionString
+            {
+                Port = 5432,
+                Database = "mydb"
+                // Server is [Required] but not set
+            };
+
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() => result.ToString());
+            Assert.Contains("Server", ex.Message);
+            Assert.Contains("required", ex.Message.ToLower());
+        }
+
+        [Fact]
+        public void ToString_WithAllRequiredPropertiesSet_Succeeds()
+        {
+            // Arrange
+            var result = new TestConnectionString
+            {
+                Server = "localhost"
+                // Server is the only [Required] property
+            };
+
+            // Act
+            var serialized = result.ToString();
+
+            // Assert
+            Assert.Contains("Server=localhost", serialized);
+        }
+
+        #endregion
+
+        #region DI Auto-Detection Tests
+
+        [Fact]
+        public void AddConnectionString_WithParameterlessConstructorType_WorksViaInitialize()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            var connStr = "Server=localhost;Port=5432;Database=mydb";
+
+            // Act
+            services.AddConnectionString<OptionalOnlyConnectionString>(connStr);
+            var provider = services.BuildServiceProvider();
+
+            // Assert - OptionalOnlyConnectionString has no parameterized constructor
+            var instance = provider.GetRequiredService<OptionalOnlyConnectionString>();
+            Assert.NotNull(instance);
+        }
+
+        [Fact]
+        public void AddConnectionString_MixedTypes_BothWorkCorrectly()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            // Act - TestConnectionString has parameterized constructor
+            services.AddConnectionString<TestConnectionString>("Server=localhost;Port=5432");
+            
+            // OptionalOnlyConnectionString will use parameterless + Initialize fallback
+            services.AddConnectionString<OptionalOnlyConnectionString>("Key1=value1;Key2=value2");
+            
+            var provider = services.BuildServiceProvider();
+
+            // Assert
+            var testInstance = provider.GetRequiredService<TestConnectionString>();
+            Assert.Equal("localhost", testInstance.Server);
+
+            var optionalInstance = provider.GetRequiredService<OptionalOnlyConnectionString>();
+            Assert.Equal("value1", optionalInstance.Key1);
+            Assert.Equal("value2", optionalInstance.Key2);
         }
 
         #endregion

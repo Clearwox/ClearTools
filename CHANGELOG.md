@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.1] - 2026-01-10
+### Added
+- **ENHANCED**: Connection String Configuration Framework - Flexible Instantiation Patterns
+  - Added `Initialize(string connectionString, ConnectionStringParsingOptions? options = null)` public method to `ConnectionStringBase`
+  - Added protected parameterless constructor to `ConnectionStringBase` for minimal boilerplate in derived classes
+  - Made `Options` property settable to support Initialize pattern
+  - Made parameterized constructor public for direct base class usage
+  - **Three instantiation patterns now supported**:
+    1. **Constructor-Based** (traditional): Pass connection string to constructor via `base(connectionString, options)`
+    2. **Initialize Method** (minimal boilerplate): Use parameterless constructor + call `Initialize()` explicitly
+    3. **Manual Property Setting**: Set properties directly, serialize with `ToString()`
+  - Enhanced `ToString()` validation: Now validates required properties before serialization (catches manual property setting errors)
+  - Auto-detection in DI: `AddConnectionString<T>()` automatically detects which pattern the type supports via triple fallback
+  - **Benefits**:
+    - Derived classes can omit constructors entirely (use inherited parameterless constructor)
+    - Reduces boilerplate for simple connection string types
+    - Maintains backward compatibility with all existing built-in types
+    - Provides flexibility for different usage scenarios
+
+### Changed
+- **IMPROVED**: `ConnectionStringExtensions.AddConnectionString<T>()` now uses triple try-catch fallback:
+  1. Try `(string connectionString, ConnectionStringParsingOptions? options)` constructor
+  2. Fall back to `(string connectionString)` constructor
+  3. Fall back to parameterless constructor + `Initialize(connectionString, options)`
+- **IMPROVED**: Validation now occurs in both `Initialize()` (for connection string parsing) and `ToString()` (for manual property setting)
+
+### Technical Details
+- 11 new tests added covering Initialize() method, manual property setting, ToString() validation, and DI auto-detection
+- Total test count increased from 172 to 182 tests (all passing)
+- No breaking changes - all existing code continues to work unchanged
+
 ## [3.3.0] - 2026-01-09
 ### Added
 - **NEW**: Connection String Configuration Framework (`ClearTools.Configuration`)

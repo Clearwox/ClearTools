@@ -162,6 +162,112 @@ var smsConfig = new BulkSmsServiceConnectionString(
     "Url=https://api.sms.com;Username=myuser;Password=mypass;Timeout=30");
 ```
 
+### Instantiation Patterns
+
+The framework supports three flexible patterns for creating connection string instances:
+
+#### 1. Constructor-Based (Traditional)
+
+Define a constructor that accepts the connection string and passes it to the base class:
+
+```csharp
+public class MyConnectionString : ConnectionStringBase
+{
+    [ConnectionStringKey("Server")]
+    [Required]
+    public string? Server { get; set; }
+    
+    [ConnectionStringKey("Port")]
+    public int? Port { get; set; }
+    
+    // Constructor-based instantiation
+    public MyConnectionString(string connectionString, ConnectionStringParsingOptions? options = null)
+        : base(connectionString, options)
+    {
+    }
+}
+
+// Usage
+var config = new MyConnectionString("Server=localhost;Port=5432");
+```
+
+#### 2. Initialize Method (Parameterless Constructor)
+
+For minimal boilerplate, use a parameterless constructor and call `Initialize()`:
+
+```csharp
+public class MyConnectionString : ConnectionStringBase
+{
+    [ConnectionStringKey("Server")]
+    [Required]
+    public string? Server { get; set; }
+    
+    [ConnectionStringKey("Port")]
+    public int? Port { get; set; }
+    
+    // No constructor needed - uses parameterless constructor from base class
+}
+
+// Usage with Initialize method
+var config = new MyConnectionString();
+config.Initialize("Server=localhost;Port=5432");
+
+// Or set options
+var options = new ConnectionStringParsingOptions { Delimiter = "|" };
+config.Initialize("Server=localhost|Port=5432", options);
+```
+
+**Note:** When using the parameterless constructor pattern, the base class provides a default constructor automatically. You don't need to define any constructor in your derived class unless you need custom initialization logic.
+
+#### 3. Manual Property Setting
+
+Set properties directly and serialize to a connection string:
+
+```csharp
+var config = new MyConnectionString();
+config.Server = "localhost";
+config.Port = 5432;
+
+// Serialize to connection string
+string connectionString = config.ToString();
+// Output: "Server=localhost;Port=5432"
+```
+
+**Important:** When manually setting properties, the `ToString()` method validates that all `[Required]` properties have values. If any required property is missing, an `InvalidOperationException` is thrown.
+
+```csharp
+var config = new MyConnectionString();
+config.Port = 5432;
+// Missing required Server property
+
+// Throws InvalidOperationException
+string connectionString = config.ToString();
+```
+
+#### Pattern Comparison
+
+| Pattern | Boilerplate | Best For | Validation Timing |
+|---------|------------|----------|-------------------|
+| Constructor-Based | Medium | Traditional usage, explicit control | During construction |
+| Initialize Method | Minimal | Reducing boilerplate, DI scenarios | During Initialize() call |
+| Manual Property Setting | Minimal | Building configs programmatically | During ToString() call |
+
+#### Auto-Detection in Dependency Injection
+
+The DI extension `AddConnectionString<T>()` automatically detects which pattern your type supports and uses the appropriate instantiation method:
+
+```csharp
+// Tries in order:
+// 1. Constructor with (string connectionString, ConnectionStringParsingOptions? options)
+// 2. Constructor with (string connectionString)
+// 3. Parameterless constructor + Initialize(connectionString, options)
+
+services.AddConnectionString<MyConnectionString>(
+    "Server=localhost;Port=5432");
+```
+
+This means you can use any of the three patterns, and the DI system will automatically work with your choice.
+
 ### Dependency Injection Integration
 
 #### Direct String Value

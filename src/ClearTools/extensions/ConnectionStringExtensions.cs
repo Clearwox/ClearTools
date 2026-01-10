@@ -12,6 +12,7 @@ namespace ClearTools.Extensions
     {
         /// <summary>
         /// Registers a strongly-typed connection string configuration as a singleton service.
+        /// Automatically detects whether the type uses a parameterized constructor or parameterless constructor pattern.
         /// </summary>
         /// <typeparam name="T">The connection string type that inherits from <see cref="ConnectionStringBase"/>.</typeparam>
         /// <param name="services">The service collection.</param>
@@ -22,8 +23,13 @@ namespace ClearTools.Extensions
         /// <exception cref="InvalidOperationException">Thrown when parsing fails or required properties are missing.</exception>
         /// <example>
         /// <code>
+        /// // Works with constructor-based types
         /// services.AddConnectionString&lt;SqlServerConnectionString&gt;(
         ///     "Server=localhost;Database=MyDb;User Id=sa;Password=mypass");
+        /// 
+        /// // Also works with parameterless constructor types
+        /// services.AddConnectionString&lt;CustomConnectionString&gt;(
+        ///     "ApiUrl=https://api.example.com;ApiKey=secret");
         /// 
         /// // Later, inject it into a service:
         /// public class MyService
@@ -49,7 +55,27 @@ namespace ClearTools.Extensions
             if (connectionString == null)
                 throw new ArgumentNullException(nameof(connectionString));
 
-            var instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+            T instance;
+            try
+            {
+                // Try constructor with both parameters
+                instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+            }
+            catch (MissingMethodException)
+            {
+                try
+                {
+                    // Try constructor with single parameter
+                    instance = (T)Activator.CreateInstance(typeof(T), connectionString)!;
+                }
+                catch (MissingMethodException)
+                {
+                    // Fallback to parameterless constructor + Initialize
+                    instance = (T)Activator.CreateInstance(typeof(T))!;
+                    instance.Initialize(connectionString, options);
+                }
+            }
+            
             services.AddSingleton(instance);
 
             return services;
