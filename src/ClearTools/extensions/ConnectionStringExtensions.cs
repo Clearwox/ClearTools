@@ -58,8 +58,9 @@ namespace ClearTools.Extensions
             T instance;
             try
             {
-                // Try constructor with both parameters
-                instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+                // Try parameterless constructor + Initialize (most common - minimal boilerplate)
+                instance = (T)Activator.CreateInstance(typeof(T))!;
+                instance.Initialize(connectionString, options);
             }
             catch (MissingMethodException)
             {
@@ -70,9 +71,8 @@ namespace ClearTools.Extensions
                 }
                 catch (MissingMethodException)
                 {
-                    // Fallback to parameterless constructor + Initialize
-                    instance = (T)Activator.CreateInstance(typeof(T))!;
-                    instance.Initialize(connectionString, options);
+                    // Fallback to constructor with both parameters
+                    instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
                 }
             }
             
