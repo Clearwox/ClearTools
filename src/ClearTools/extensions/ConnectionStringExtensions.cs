@@ -64,15 +64,32 @@ namespace ClearTools.Extensions
             }
             catch (MissingMethodException)
             {
-                try
+                // Check if options is provided to prefer the appropriate constructor
+                if (options != null)
                 {
-                    // Try constructor with single parameter
-                    instance = (T)Activator.CreateInstance(typeof(T), connectionString)!;
+                    try
+                    {
+                        // Options provided - prefer two-parameter constructor
+                        instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+                    }
+                    catch (MissingMethodException)
+                    {
+                        // Fallback to single parameter constructor
+                        instance = (T)Activator.CreateInstance(typeof(T), connectionString)!;
+                    }
                 }
-                catch (MissingMethodException)
+                else
                 {
-                    // Fallback to constructor with both parameters
-                    instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+                    try
+                    {
+                        // No options - prefer single parameter constructor
+                        instance = (T)Activator.CreateInstance(typeof(T), connectionString)!;
+                    }
+                    catch (MissingMethodException)
+                    {
+                        // Fallback to two-parameter constructor with null options
+                        instance = (T)Activator.CreateInstance(typeof(T), connectionString, options)!;
+                    }
                 }
             }
             
