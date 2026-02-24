@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Clear
@@ -10,11 +12,12 @@ namespace Clear
     /// </summary>
     public class RequestValidationOption
     {
-        public RequestValidationOption(string validationKey, bool skipForDevelopment = false, bool skipForRootEndPoint = true)
+        public RequestValidationOption(string validationKey, bool skipForDevelopment = false, bool skipForRootEndPoint = true, params string[] excludedPaths)
         {
             ValidationKey = validationKey;
             SkipForDevelopment = skipForDevelopment;
             SkipForRootEndPoint = skipForRootEndPoint;
+            ExcludedPaths = excludedPaths ?? Array.Empty<string>();
         }
 
         /// <summary>
@@ -31,6 +34,11 @@ namespace Clear
         /// Whether to skip validation for the root endpoint.
         /// </summary>
         public bool SkipForRootEndPoint { get; set; }
+
+        /// <summary>
+        /// Paths to exclude from validation (case-insensitive).
+        /// </summary>
+        public string[] ExcludedPaths { get; set; }
     }
 
     /// <summary>
@@ -41,18 +49,22 @@ namespace Clear
         readonly string _key;
         readonly bool _skipDev = false;
         readonly bool _skipRoot = true;
+        readonly string[] _excludedPaths;
 
-        public RequestValidationMiddleware(string validationKey, bool skipForDevelopment = false, bool skipRoot = true)
+        public RequestValidationMiddleware(string validationKey, bool skipForDevelopment = false, bool skipRoot = true, params string[] excludedPaths)
         {
             _key = validationKey;
             _skipDev = skipForDevelopment;
             _skipRoot = skipRoot;
+            _excludedPaths = excludedPaths ?? Array.Empty<string>();
         }
 
         public RequestValidationMiddleware(RequestValidationOption option)
         {
             _key = option.ValidationKey;
             _skipDev = option.SkipForDevelopment;
+            _skipRoot = option.SkipForRootEndPoint;
+            _excludedPaths = option.ExcludedPaths;
         }
 
         /// <summary>
@@ -63,8 +75,15 @@ namespace Clear
         /// <returns>A task that represents the completion of request processing.</returns>
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
+            // Check if path should be excluded from validation
+            var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+            var isExcluded = _excludedPaths.Any(excluded =>
+                path.Equals(excluded, StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(excluded, StringComparison.OrdinalIgnoreCase));
+
             if (!((_skipRoot && context.Request.Path == "/") ||
-                  (_skipDev && context.Request.Host.Host.Contains("localhost"))))
+                  (_skipDev && context.Request.Host.Host.Contains("localhost")) ||
+                  isExcluded))
             {
                 string key = context.Request.Headers["key"].ToString();
 
@@ -99,11 +118,12 @@ namespace Clear
         /// <param name="validationKey">The validation key.</param>
         /// <param name="skipForDevelopment">Whether to skip validation for development.</param>
         /// <param name="skipRootEndPoint">Whether to skip validation for the root endpoint.</param>
+        /// <param name="excludedPaths">Paths to exclude from validation (case-insensitive).</param>
         /// <returns>The service collection.</returns>
         public static IServiceCollection AddRequestValidation(this IServiceCollection services,
-            string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true)
+            string validationKey, bool skipForDevelopment = false, bool skipRootEndPoint = true, params string[] excludedPaths)
         {
-            services.AddSingleton(s => new RequestValidationMiddleware(validationKey, skipForDevelopment, skipRootEndPoint));
+            services.AddSingleton(s => new RequestValidationMiddleware(validationKey, skipForDevelopment, skipRootEndPoint, excludedPaths));
             return services;
         }
 

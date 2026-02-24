@@ -475,16 +475,51 @@ var captchaResult = await apiClient.ValidateGoogleCaptcharAsync(secretKey, respo
 
 ### Request Validation Middleware (`RequestValidationMiddleware`)
 
-ASP.NET Core middleware for API key validation:
+ASP.NET Core middleware for API key validation with flexible path exclusion:
 
 ```csharp
-// Setup
+// Basic setup
 services.AddRequestValidation("your_secret_api_key", skipForDevelopment: true);
+app.UseRequestValidation();
+
+// With excluded paths (e.g., health checks, public endpoints)
+services.AddRequestValidation(
+    "your_secret_api_key", 
+    skipForDevelopment: true,
+    skipRootEndPoint: true,
+    excludedPaths: new[] { "/health", "/api/public", "/webhooks" }
+);
+app.UseRequestValidation();
+
+// Using RequestValidationOption for more control
+var options = new RequestValidationOption(
+    validationKey: "your_secret_api_key",
+    skipForDevelopment: true,
+    skipForRootEndPoint: true,
+    excludedPaths: new[] { "/health", "/metrics", "/api/public" }
+);
+services.AddSingleton(new RequestValidationMiddleware(options));
 app.UseRequestValidation();
 
 // Client usage - include key in headers
 client.DefaultRequestHeaders.Add("key", "your_secret_api_key");
 ```
+
+**Features:**
+- **API Key Validation**: Validates incoming requests using a header-based key
+- **Development Skip**: Optionally skip validation for localhost during development
+- **Root Endpoint Skip**: Optionally skip validation for the root endpoint (`/`)
+- **Path Exclusion**: Exclude specific paths from validation (case-insensitive)
+  - Supports exact path matching: `/health` matches only `/health`
+  - Supports prefix matching: `/api/public` matches `/api/public`, `/api/public/users`, etc.
+- **Flexible Configuration**: Use simple parameters or `RequestValidationOption` for advanced scenarios
+
+**Common Use Cases for Excluded Paths:**
+- Health check endpoints (`/health`, `/healthz`)
+- Metrics endpoints (`/metrics`, `/prometheus`)
+- Public API routes (`/api/public`)
+- Webhook receivers that use their own validation
+- Static file paths or public documentation
 
 ## 📊 Data Models
 

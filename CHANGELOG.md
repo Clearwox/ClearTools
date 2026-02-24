@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.5] - 2026-02-24
+### Added
+- **ENHANCED**: Request Validation Middleware - Path Exclusion Support
+  - Added `excludedPaths` parameter to `RequestValidationMiddleware` constructors
+  - Added `ExcludedPaths` property to `RequestValidationOption` for specifying paths to exclude from validation
+  - Case-insensitive path matching with support for exact matches and prefix matching (e.g., "/health", "/api/public")
+  - Paths can be excluded using exact match or by prefix (e.g., "/api/public" excludes all routes starting with that path)
+  - **Use cases**: Health check endpoints, public APIs, webhook receivers, static file paths
+  - **Benefits**:
+    - Fine-grained control over which endpoints require validation
+    - Eliminates need for multiple middleware configurations
+    - Cleaner code for mixed public/private API scenarios
+    - Maintains backward compatibility (excludedPaths is optional)
+
+### Fixed
+- **BUGFIX**: `RequestValidationMiddleware` constructor using `RequestValidationOption` now correctly sets `_skipRoot` field
+  - Previously, the field was not being assigned from `option.SkipForRootEndPoint`
+  - This bug caused inconsistent behavior when using the options-based constructor
+
+### Changed
+- **IMPROVED**: `AddRequestValidation()` extension method signature updated to include `excludedPaths` parameter
+- Updated version from 3.3.0 to 3.3.5
+
+### Technical Details
+- Path exclusion uses case-insensitive comparison (`StringComparison.OrdinalIgnoreCase`)
+- Supports both exact path matching and prefix-based matching
+- Empty or null `excludedPaths` safely defaults to empty array
+- All existing code remains fully compatible (optional parameter)
+
 ## [3.3.1] - 2026-01-10
 ### Added
 - **ENHANCED**: Connection String Configuration Framework - Flexible Instantiation Patterns
