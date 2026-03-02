@@ -55,8 +55,6 @@ namespace ClearTools.Extensions
                         default:
                             throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
                     }
-
-                    services.AddScoped(interfaceType, serviceType);
                 }
             }
 
