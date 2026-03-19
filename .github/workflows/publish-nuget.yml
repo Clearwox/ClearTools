@@ -31,12 +31,23 @@ jobs:
       - name: Pack ClearTools
         run: dotnet pack src/ClearTools/ClearTools.csproj -c Release --no-build -o ./artifacts
 
+      - name: Validate NuGet API Key
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "##[error]NUGET_API_KEY secret is not configured. Please add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Push packages to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
           for pkg in ./artifacts/*.nupkg; do
             echo "Pushing $pkg"
             dotnet nuget push "$pkg" \
-              --api-key "${{ secrets.NUGET_API_KEY }}" \
+              --api-key "$NUGET_API_KEY" \
               --source "https://api.nuget.org/v3/index.json" \
               --skip-duplicate
           done
