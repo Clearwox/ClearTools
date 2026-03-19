@@ -142,6 +142,7 @@ See [full documentation](docs/USAGE.md#connection-string-configuration-framework
 - [Installation & Setup](#-installation--setup)
 - [Examples](#-examples)
 - [Documentation](#-documentation)
+- [Publishing to NuGet](#-publishing-to-nuget)
 - [Contributing](#-contributing)
 - [License](#-license)
 
