@@ -49,4 +49,8 @@
 		<PackageReference Include="System.Drawing.Common" Version="9.0.8" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\ClearTools.Abstraction\ClearTools.Abstraction.csproj" />
+	</ItemGroup>
+
 </Project>
