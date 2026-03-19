@@ -698,6 +698,26 @@ For comprehensive documentation covering all methods and use cases, see:
 ✅ **Base Conversion**: Number base conversion utilities  
 ✅ **File Management**: File I/O operations and utilities  
 
+## 📦 Publishing to NuGet
+
+This repository includes a GitHub Actions workflow that manually publishes both NuGet packages (`ClearTools` and `ClearTools.Abstraction`) to [nuget.org](https://www.nuget.org/).
+
+### Setup
+
+1. **Create a NuGet API key** on [nuget.org](https://www.nuget.org/account/apikeys) (scope it to the package IDs you publish).
+2. **Add the secret to GitHub**:
+   - Go to **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `NUGET_API_KEY`
+   - Value: your nuget.org API key
+
+### Running the workflow
+
+1. Go to the **Actions** tab in this repository.
+2. Select **"Publish NuGet Packages"** from the left sidebar.
+3. Click **"Run workflow"** → **"Run workflow"** to trigger a manual publish.
+
+The workflow will restore, build (Release), pack both projects, and push all `.nupkg` files to nuget.org, skipping any versions that are already published.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.

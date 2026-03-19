@@ -1,0 +1,42 @@
+name: Publish NuGet Packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore src/ClearTools.sln
+
+      - name: Build (Release)
+        run: dotnet build src/ClearTools.sln -c Release --no-restore
+
+      - name: Pack ClearTools.Abstraction
+        run: dotnet pack src/ClearTools.Abstraction/ClearTools.Abstraction.csproj -c Release --no-build -o ./artifacts
+
+      - name: Pack ClearTools
+        run: dotnet pack src/ClearTools/ClearTools.csproj -c Release --no-build -o ./artifacts
+
+      - name: Push packages to nuget.org
+        run: |
+          for pkg in ./artifacts/*.nupkg; do
+            echo "Pushing $pkg"
+            dotnet nuget push "$pkg" \
+              --api-key "${{ secrets.NUGET_API_KEY }}" \
+              --source "https://api.nuget.org/v3/index.json" \
+              --skip-duplicate
+          done
