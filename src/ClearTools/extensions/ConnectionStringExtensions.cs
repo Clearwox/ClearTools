@@ -11,6 +11,28 @@ namespace ClearTools.Extensions
     public static class ConnectionStringExtensions
     {
         /// <summary>
+        /// adds a strongly-typed connection string configuration as a singleton service if the provided connection string is not null or empty.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="services"></param>
+        /// <param name="connectionString"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddConnectionStringIfNotEmpty<T>(
+            this IServiceCollection services,
+            string connectionString,
+            ConnectionStringParsingOptions? options = null)
+            where T : ConnectionStringBase
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                return services;
+            }
+
+            return AddConnectionString<T>(services, connectionString, options);
+        }
+
+        /// <summary>
         /// Registers a strongly-typed connection string configuration as a singleton service.
         /// Automatically detects whether the type uses a parameterized constructor or parameterless constructor pattern.
         /// </summary>
@@ -49,6 +71,11 @@ namespace ClearTools.Extensions
             ConnectionStringParsingOptions? options = null)
             where T : ConnectionStringBase
         {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("Connection string cannot be null or empty.", nameof(connectionString));
+            }
+
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 

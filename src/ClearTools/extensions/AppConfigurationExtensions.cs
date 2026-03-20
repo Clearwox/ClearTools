@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Azure.Data.AppConfiguration;
 using Azure.Identity;
+using ClearTools.Abstraction.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;

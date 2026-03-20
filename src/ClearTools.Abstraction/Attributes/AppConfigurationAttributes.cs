@@ -1,6 +1,6 @@
 using System;
 
-namespace ClearTools.Extensions
+namespace ClearTools.Abstraction.Attributes
 {
     /// <summary>
     /// Attribute to specify the App Configuration key name for a property

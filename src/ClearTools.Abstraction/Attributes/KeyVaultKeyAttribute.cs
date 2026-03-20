@@ -1,6 +1,6 @@
 using System;
 
-namespace ClearTools.Extensions
+namespace ClearTools.Abstraction.Attributes
 {
     /// <summary>
     /// Attribute to specify the Key Vault key name for a property
