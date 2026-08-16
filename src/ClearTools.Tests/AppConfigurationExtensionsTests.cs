@@ -1,5 +1,4 @@
-using Azure;
-using Azure.Data.AppConfiguration;
+using ClearTools.Abstraction.Attributes;
 using ClearTools.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,19 +12,19 @@ public class AppConfigurationExtensionsTests
     private class TestSettings
     {
         public string? DatabaseConnectionString { get; set; }
-        
+
         [AppConfigurationKey("api-key")]
         public string? ApiKey { get; set; }
-        
+
         public int MaxRetryCount { get; set; }
-        
+
         public bool EnableLogging { get; set; }
-        
+
         public double? OptionalValue { get; set; }
-        
+
         [FeatureFlag("enable-new-ui")]
         public bool NewUiEnabled { get; set; }
-        
+
         [FeatureFlag("beta-features")]
         public bool? BetaFeaturesEnabled { get; set; }
     }
@@ -119,7 +118,6 @@ public class AppConfigurationExtensionsTests
             out var settings,
             label: null,
             keyFilter: null,
-            skipDevelopment: true,
             credential: null);
 
         // Assert
@@ -153,8 +151,7 @@ public class AppConfigurationExtensionsTests
             // Act
             mockBuilder.Object.AddAppConfigurationForAzureFunctions<TestSettings>(
                 "https://test.azconfig.io",
-                out var settings,
-                skipDevelopment: true);
+                out var settings);
 
             // Assert
             Assert.NotNull(settings);
@@ -203,8 +200,7 @@ public class AppConfigurationExtensionsTests
         // Act
         mockBuilder.Object.AddAppConfigurationForWebApplication<TestSettings>(
             "test-connection-string",
-            out var settings,
-            skipDevelopment: false);
+            out var settings);
 
         // Assert
         Assert.NotNull(settings);
@@ -241,9 +237,8 @@ public class AppConfigurationExtensionsTests
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() =>
             mockBuilder.Object.AddAppConfigurationForWebApplication<InvalidFeatureFlagSettings>(
-                "test-connection-string",
-                out var settings,
-                skipDevelopment: false));
+                "test-connection-string", out var settings
+        ));
 
         Assert.Contains("InvalidFlag", exception.Message);
         Assert.Contains("FeatureFlag", exception.Message);
@@ -278,8 +273,7 @@ public class AppConfigurationExtensionsTests
         // Act
         mockBuilder.Object.AddAppConfigurationForWebApplication<TestSettings>(
             "test-connection-string",
-            out var settings,
-            skipDevelopment: false);
+            out var settings);
 
         // Assert
         Assert.NotNull(settings);
@@ -314,8 +308,7 @@ public class AppConfigurationExtensionsTests
         // Act
         mockBuilder.Object.AddAppConfigurationForWebApplication<TestSettings>(
             "test-connection-string",
-            out var settings,
-            skipDevelopment: false);
+            out var settings);
 
         // Assert
         Assert.NotNull(settings);
@@ -353,8 +346,7 @@ public class AppConfigurationExtensionsTests
         var exception = Assert.Throws<InvalidOperationException>(() =>
             mockBuilder.Object.AddAppConfigurationForWebApplication<TestSettings>(
                 "test-connection-string",
-                out var settings,
-                skipDevelopment: false));
+                out var settings));
 
         Assert.Contains("MaxRetryCount", exception.Message);
     }
@@ -385,8 +377,7 @@ public class AppConfigurationExtensionsTests
         // Act
         mockBuilder.Object.AddAppConfigurationForWebApplication<TestSettings>(
             "test-connection-string",
-            out var settings,
-            skipDevelopment: false);
+            out var settings);
 
         // Assert
         Assert.NotNull(settings);
@@ -410,14 +401,13 @@ public class AppConfigurationExtensionsTests
         // Act
         mockBuilder.Object.AddAppConfigurationForWebApplication<EmptySettings>(
             "test-connection-string",
-            out var settings,
-            skipDevelopment: false);
+            out var settings);
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
         var registeredSettings1 = serviceProvider.GetService<EmptySettings>();
         var registeredSettings2 = serviceProvider.GetService<EmptySettings>();
-        
+
         Assert.NotNull(registeredSettings1);
         Assert.NotNull(registeredSettings2);
         Assert.Same(registeredSettings1, registeredSettings2); // Should be same instance (singleton)
@@ -446,8 +436,7 @@ public class AppConfigurationExtensionsTests
             // Act
             mockBuilder.Object.AddAppConfigurationForAzureFunctions<TestSettings>(
                 "https://test.azconfig.io",
-                out var settings,
-                skipDevelopment: true);
+                out var settings);
 
             // Assert
             Assert.NotNull(settings);
@@ -481,8 +470,7 @@ public class AppConfigurationExtensionsTests
         // Act
         var result = mockBuilder.Object.AddAppConfigurationForWebApplication<EmptySettings>(
             "Endpoint=https://test.azconfig.io;Id=test;Secret=secret",
-            out var settings,
-            skipDevelopment: true);
+            out var settings);
 
         // Assert
         Assert.NotNull(result);
@@ -506,8 +494,7 @@ public class AppConfigurationExtensionsTests
         // Act
         var result = mockBuilder.Object.AddAppConfigurationForAzureFunctions<EmptySettings>(
             "Endpoint=https://test.azconfig.io;Id=test;Secret=secret",
-            out var settings,
-            skipDevelopment: true);
+            out var settings);
 
         // Assert
         Assert.NotNull(result);

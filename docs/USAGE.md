@@ -1339,8 +1339,7 @@ public class AppSettings
 var builder = WebApplication.CreateBuilder(args);
 builder.AddKeyVaultForWebApplication<AppSettings>(
     keyVaultUri: "https://your-keyvault.vault.azure.net/",
-    out AppSettings settings,
-    skipDevelopment: true
+    out AppSettings settings
 );
 
 // For Azure Functions (direct SecretClient access)
@@ -1348,8 +1347,7 @@ var hostBuilder = new HostBuilder();
 hostBuilder.ConfigureFunctionsWorkerDefaults()
     .AddKeyVaultForAzureFunctions<AppSettings>(
         keyVaultUri: "https://your-keyvault.vault.azure.net/",
-        out AppSettings functionSettings,
-        skipDevelopment: true
+        out AppSettings functionSettings
     );
 
 // Direct Key Vault access (async)

@@ -24,18 +24,14 @@ namespace ClearTools.Extensions
         /// <param name="builder">The host application builder</param>
         /// <param name="keyVaultUri">The URI of the Azure Key Vault</param>
         /// <param name="settings">The populated settings object</param>
-        /// <param name="skipDevelopment">Whether to skip Key Vault in development environment. Default is true.</param>
         /// <param name="credential">Optional Azure credential. If null, DefaultAzureCredential will be used</param>
         /// <returns>The builder for method chaining</returns>
         public static IHostApplicationBuilder AddKeyVaultForWebApplication<T>(
-            this IHostApplicationBuilder builder, string keyVaultUri, out T settings, bool skipDevelopment = true, TokenCredential? credential = null)
+            this IHostApplicationBuilder builder, string keyVaultUri, out T settings, TokenCredential? credential = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
-            {
-                var cred = credential ?? new DefaultAzureCredential();
-                builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUri), cred);
-            }
+            var cred = credential ?? new DefaultAzureCredential();
+            builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUri), cred);
 
             settings = CreateSettings<T>(builder.Configuration);
             builder.Services.AddSingleton(settings);
@@ -52,22 +48,13 @@ namespace ClearTools.Extensions
         /// <param name="builder">The host application builder</param>
         /// <param name="keyVaultUri">The URI of the Azure Key Vault</param>
         /// <param name="settings">The populated settings object</param>
-        /// <param name="skipDevelopment">Whether to skip Key Vault in development environment. Default is true.</param>
         /// <param name="credential">Optional Azure credential. If null, DefaultAzureCredential will be used</param>
         /// <returns>The builder for method chaining</returns>
         public static IHostApplicationBuilder AddKeyVaultForAzureFunctions<T>(
-            this IHostApplicationBuilder builder, string keyVaultUri, out T settings, bool skipDevelopment = true, TokenCredential? credential = null)
+            this IHostApplicationBuilder builder, string keyVaultUri, out T settings, TokenCredential? credential = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
-            {
-                settings = CreateSettingsFromKeyVault<T>(keyVaultUri, credential);
-            }
-            else
-            {
-                // In development, create settings from environment variables
-                settings = CreateSettingsFromEnvironment<T>();
-            }
+            settings = CreateSettingsFromKeyVault<T>(keyVaultUri, credential);
             
             builder.Services.AddSingleton(settings);
             return builder;
@@ -160,32 +147,6 @@ namespace ClearTools.Extensions
             {
                 var keyVaultKey = GetKeyVaultKey(property);
                 var value = configuration[keyVaultKey];
-
-                if (!string.IsNullOrEmpty(value))
-                {
-                    SetPropertyValue(property, instance, value);
-                }
-            }
-
-            return instance;
-        }
-
-        /// <summary>
-        /// Creates a settings object by reading values from environment variables.
-        /// Used as fallback in development environment when Key Vault is skipped.
-        /// </summary>
-        /// <typeparam name="T">The type of settings object to create</typeparam>
-        /// <returns>A populated instance of type T with values from environment variables</returns>
-        private static T CreateSettingsFromEnvironment<T>() where T : class, new()
-        {
-            var instance = new T();
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite);
-
-            foreach (var property in properties)
-            {
-                var keyVaultKey = GetKeyVaultKey(property);
-                var value = Environment.GetEnvironmentVariable(keyVaultKey);
 
                 if (!string.IsNullOrEmpty(value))
                 {

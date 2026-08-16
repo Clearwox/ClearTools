@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Security.KeyVault.Secrets;
+using ClearTools.Abstraction.Attributes;
 using ClearTools.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +41,7 @@ public class KeyVaultExtensionsTests
     }
 
     [Fact]
-    public void AddKeyVaultConfiguration_WithDevelopmentEnvironment_ShouldSkipKeyVault()
+    public void AddKeyVaultConfiguration_WithDevelopmentEnvironment_ShouldLoadKeyVault()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -57,14 +58,13 @@ public class KeyVaultExtensionsTests
         // Act
         var result = mockBuilder.Object.AddKeyVaultForWebApplication<TestSettings>(
             "https://test.vault.azure.net/", 
-            out var settings, 
-            skipDevelopment: false
+            out var settings
         );
 
         // Assert
         Assert.NotNull(settings);
         Assert.NotNull(result);
-        Assert.Null(settings.ConnectionString); // Should be empty in development
+        Assert.Null(settings.ConnectionString);
     }
 
     [Fact]
@@ -190,48 +190,6 @@ public class KeyVaultExtensionsTests
         var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => task);
         
         Assert.Contains("Access denied to Key Vault secret 'ConnectionString'", exception.Message);
-    }
-
-    [Fact]
-    public void AddKeyVaultConfigurationDirect_WithEnvironmentVariables_ShouldPopulateFromEnvironment()
-    {
-        // Arrange
-        Environment.SetEnvironmentVariable("ConnectionString", "env-connection");
-        Environment.SetEnvironmentVariable("api-key", "env-api-key");
-        Environment.SetEnvironmentVariable("MaxRetryCount", "10");
-        
-        try
-        {
-            var services = new ServiceCollection();
-            var mockConfiguration = new Mock<IConfigurationManager>();
-            var mockEnvironment = new Mock<IHostEnvironment>();
-            // Mock the EnvironmentName property instead of IsDevelopment() extension method
-            mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
-            
-            var mockBuilder = new Mock<IHostApplicationBuilder>();
-            mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
-            mockBuilder.Setup(x => x.Configuration).Returns(mockConfiguration.Object);
-            mockBuilder.Setup(x => x.Services).Returns(services);
-
-            // Act - skipDevelopment defaults to true, which skips Key Vault and uses environment variables
-            var result = mockBuilder.Object.AddKeyVaultForAzureFunctions<TestSettings>(
-                "https://test.vault.azure.net/", 
-                out var settings
-            );
-
-            // Assert
-            Assert.NotNull(settings);
-            Assert.Equal("env-connection", settings.ConnectionString);
-            Assert.Equal("env-api-key", settings.ApiKey);
-            Assert.Equal(10, settings.MaxRetryCount);
-        }
-        finally
-        {
-            // Cleanup
-            Environment.SetEnvironmentVariable("ConnectionString", null);
-            Environment.SetEnvironmentVariable("api-key", null);
-            Environment.SetEnvironmentVariable("MaxRetryCount", null);
-        }
     }
 
     [Fact]

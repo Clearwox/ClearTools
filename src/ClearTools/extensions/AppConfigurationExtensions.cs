@@ -23,18 +23,18 @@ namespace ClearTools.Extensions
         /// Whether to enable automatic refresh of configuration values
         /// </summary>
         public bool EnableRefresh { get; set; }
-        
+
         /// <summary>
         /// The interval at which configuration should be refreshed. Minimum recommended is 30 seconds.
         /// </summary>
         public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromMinutes(1);
-        
+
         /// <summary>
         /// Sentinel keys that trigger a refresh when their values change.
         /// Common patterns: "AppSettings:Version", "Config:Sentinel", "App:RefreshKey"
         /// </summary>
         public string[] SentinelKeys { get; set; } = Array.Empty<string>();
-        
+
         /// <summary>
         /// Optional error handler for refresh failures. If null, errors are silently ignored.
         /// Note: Due to Azure SDK limitations, this callback may not be invoked for all refresh errors
@@ -57,7 +57,6 @@ namespace ClearTools.Extensions
         /// <param name="settings">The populated settings object</param>
         /// <param name="label">Optional label filter for configuration keys. Use null for default label, or specific labels like "Production", "Staging"</param>
         /// <param name="keyFilter">Optional key filter pattern. Use null for all keys, or patterns like "MyApp:*" for prefix filtering</param>
-        /// <param name="skipDevelopment">Whether to skip App Configuration in development environment. Default is true.</param>
         /// <param name="credential">Optional Azure credential. If null, DefaultAzureCredential will be used</param>
         /// <param name="refreshOptions">Optional refresh configuration for automatic config updates</param>
         /// <returns>The builder for method chaining</returns>
@@ -67,36 +66,32 @@ namespace ClearTools.Extensions
             out T settings,
             string? label = null,
             string? keyFilter = null,
-            bool skipDevelopment = true,
             TokenCredential? credential = null,
             AppConfigurationRefreshOptions? refreshOptions = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
+            var cred = credential ?? new DefaultAzureCredential();
+
+            builder.Configuration.AddAzureAppConfiguration(options =>
             {
-                var cred = credential ?? new DefaultAzureCredential();
+                options.Connect(appConfigEndpoint, cred);
 
-                builder.Configuration.AddAzureAppConfiguration(options =>
+                // Apply key filter if specified
+                if (!string.IsNullOrEmpty(keyFilter))
                 {
-                    options.Connect(appConfigEndpoint, cred);
+                    options.Select(keyFilter, label);
+                }
+                else
+                {
+                    options.Select("*", label);
+                }
 
-                    // Apply key filter if specified
-                    if (!string.IsNullOrEmpty(keyFilter))
-                    {
-                        options.Select(keyFilter, label);
-                    }
-                    else
-                    {
-                        options.Select("*", label);
-                    }
-
-                    // Configure refresh if enabled
-                    if (refreshOptions?.EnableRefresh == true)
-                    {
-                        ConfigureRefresh(options, refreshOptions);
-                    }
-                });
-            }
+                // Configure refresh if enabled
+                if (refreshOptions?.EnableRefresh == true)
+                {
+                    ConfigureRefresh(options, refreshOptions);
+                }
+            });
 
             settings = CreateSettings<T>(builder.Configuration);
             builder.Services.AddSingleton(settings);
@@ -115,7 +110,6 @@ namespace ClearTools.Extensions
         /// <param name="settings">The populated settings object</param>
         /// <param name="label">Optional label filter for configuration keys. Use null for default label, or specific labels like "Production", "Staging"</param>
         /// <param name="keyFilter">Optional key filter pattern. Use null for all keys, or patterns like "MyApp:*" for prefix filtering</param>
-        /// <param name="skipDevelopment">Whether to skip App Configuration in development environment. Default is true.</param>
         /// <param name="refreshOptions">Optional refresh configuration for automatic config updates</param>
         /// <returns>The builder for method chaining</returns>
         public static IHostApplicationBuilder AddAppConfigurationForWebApplication<T>(
@@ -124,33 +118,29 @@ namespace ClearTools.Extensions
             out T settings,
             string? label = null,
             string? keyFilter = null,
-            bool skipDevelopment = true,
             AppConfigurationRefreshOptions? refreshOptions = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
+            builder.Configuration.AddAzureAppConfiguration(options =>
             {
-                builder.Configuration.AddAzureAppConfiguration(options =>
+                options.Connect(connectionString);
+
+                // Apply key filter if specified
+                if (!string.IsNullOrEmpty(keyFilter))
                 {
-                    options.Connect(connectionString);
+                    options.Select(keyFilter, label);
+                }
+                else
+                {
+                    options.Select("*", label);
+                }
 
-                    // Apply key filter if specified
-                    if (!string.IsNullOrEmpty(keyFilter))
-                    {
-                        options.Select(keyFilter, label);
-                    }
-                    else
-                    {
-                        options.Select("*", label);
-                    }
-
-                    // Configure refresh if enabled
-                    if (refreshOptions?.EnableRefresh == true)
-                    {
-                        ConfigureRefresh(options, refreshOptions);
-                    }
-                });
-            }
+                // Configure refresh if enabled
+                if (refreshOptions?.EnableRefresh == true)
+                {
+                    ConfigureRefresh(options, refreshOptions);
+                }
+            });
 
             settings = CreateSettings<T>(builder.Configuration);
             builder.Services.AddSingleton(settings);
@@ -169,31 +159,23 @@ namespace ClearTools.Extensions
         /// <param name="settings">The populated settings object</param>
         /// <param name="label">Optional label filter for configuration keys. Use null for default label, or specific labels like "Production", "Staging"</param>
         /// <param name="keyFilter">Optional key filter pattern. Use null for all keys, or patterns like "MyApp:*" for prefix filtering</param>
-        /// <param name="skipDevelopment">Whether to skip App Configuration in development environment. Default is true.</param>
         /// <param name="credential">Optional Azure credential. If null, DefaultAzureCredential will be used</param>
         /// <param name="refreshOptions">Optional refresh configuration. Note: Direct client access doesn't support automatic refresh.</param>
         /// <returns>The builder for method chaining</returns>
         public static IHostApplicationBuilder AddAppConfigurationForAzureFunctions<T>(
             this IHostApplicationBuilder builder,
-            Uri appConfigEndpoint, 
-            out T settings, 
+            Uri appConfigEndpoint,
+            out T settings,
             string? label = null,
             string? keyFilter = null,
-            bool skipDevelopment = true, 
             TokenCredential? credential = null,
             AppConfigurationRefreshOptions? refreshOptions = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
-            {
-                settings = CreateSettingsFromAppConfiguration<T>(appConfigEndpoint, credential, label, keyFilter);
-            }
-            else
-            {
-                // In development, create settings from environment variables
-                settings = CreateSettingsFromEnvironment<T>();
-            }
-            
+            settings = CreateSettingsFromAppConfiguration<T>(
+                appConfigEndpoint, credential, label, keyFilter
+            );
+
             builder.Services.AddSingleton(settings);
             return builder;
         }
@@ -209,29 +191,21 @@ namespace ClearTools.Extensions
         /// <param name="settings">The populated settings object</param>
         /// <param name="label">Optional label filter for configuration keys. Use null for default label, or specific labels like "Production", "Staging"</param>
         /// <param name="keyFilter">Optional key filter pattern. Use null for all keys, or patterns like "MyApp:*" for prefix filtering</param>
-        /// <param name="skipDevelopment">Whether to skip App Configuration in development environment. Default is true.</param>
         /// <param name="refreshOptions">Optional refresh configuration. Note: Direct client access doesn't support automatic refresh.</param>
         /// <returns>The builder for method chaining</returns>
         public static IHostApplicationBuilder AddAppConfigurationForAzureFunctions<T>(
-            this IHostApplicationBuilder builder, 
-            string connectionString, 
-            out T settings, 
+            this IHostApplicationBuilder builder,
+            string connectionString,
+            out T settings,
             string? label = null,
             string? keyFilter = null,
-            bool skipDevelopment = true,
             AppConfigurationRefreshOptions? refreshOptions = null)
             where T : class, new()
         {
-            if (!(skipDevelopment && builder.Environment.IsDevelopment()))
-            {
-                settings = CreateSettingsFromAppConfiguration<T>(connectionString, label, keyFilter);
-            }
-            else
-            {
-                // In development, create settings from environment variables
-                settings = CreateSettingsFromEnvironment<T>();
-            }
-            
+            settings = CreateSettingsFromAppConfiguration<T>(
+                connectionString, label, keyFilter
+            );
+
             builder.Services.AddSingleton(settings);
             return builder;
         }
@@ -247,7 +221,7 @@ namespace ClearTools.Extensions
         /// <param name="keyFilter">Optional key filter pattern</param>
         /// <returns>A populated instance of type T with values from App Configuration</returns>
         public static async Task<T> CreateSettingsFromAppConfigurationAsync<T>(
-            Uri appConfigEndpoint, 
+            Uri appConfigEndpoint,
             TokenCredential? credential = null,
             string? label = null,
             string? keyFilter = null)
@@ -255,7 +229,7 @@ namespace ClearTools.Extensions
         {
             var cred = credential ?? new DefaultAzureCredential();
             var client = new ConfigurationClient(appConfigEndpoint, cred);
-            
+
             return await CreateSettings<T>(client, label, keyFilter);
         }
 
@@ -275,7 +249,7 @@ namespace ClearTools.Extensions
             where T : class, new()
         {
             var client = new ConfigurationClient(connectionString);
-            
+
             return await CreateSettings<T>(client, label, keyFilter);
         }
 
@@ -290,7 +264,7 @@ namespace ClearTools.Extensions
         /// <param name="keyFilter">Optional key filter pattern</param>
         /// <returns>A populated instance of type T with values from App Configuration</returns>
         public static T CreateSettingsFromAppConfiguration<T>(
-            Uri appConfigEndpoint, 
+            Uri appConfigEndpoint,
             TokenCredential? credential = null,
             string? label = null,
             string? keyFilter = null)
@@ -349,13 +323,13 @@ namespace ClearTools.Extensions
 
                 // Regular configuration key
                 var configKey = GetAppConfigurationKey(property);
-                
+
                 // Apply key filter if specified
                 if (!string.IsNullOrEmpty(keyFilter) && !IsKeyMatchingFilter(configKey, keyFilter))
                 {
                     continue;
                 }
-                
+
                 try
                 {
                     var configSetting = await configClient.GetConfigurationSettingAsync(configKey, label);
@@ -414,44 +388,6 @@ namespace ClearTools.Extensions
         }
 
         /// <summary>
-        /// Creates a settings object by reading values from environment variables.
-        /// Used as fallback in development environment when App Configuration is skipped.
-        /// </summary>
-        /// <typeparam name="T">The type of settings object to create</typeparam>
-        /// <returns>A populated instance of type T with values from environment variables</returns>
-        private static T CreateSettingsFromEnvironment<T>() where T : class, new()
-        {
-            var instance = new T();
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite);
-
-            foreach (var property in properties)
-            {
-                // Check if this is a feature flag property
-                var featureFlagAttr = property.GetCustomAttribute<FeatureFlagAttribute>();
-                if (featureFlagAttr != null)
-                {
-                    var flagValue = Environment.GetEnvironmentVariable(featureFlagAttr.FlagName);
-                    if (!string.IsNullOrEmpty(flagValue))
-                    {
-                        SetPropertyValue(property, instance, flagValue);
-                    }
-                    continue;
-                }
-
-                var configKey = GetAppConfigurationKey(property);
-                var value = Environment.GetEnvironmentVariable(configKey);
-
-                if (!string.IsNullOrEmpty(value))
-                {
-                    SetPropertyValue(property, instance, value);
-                }
-            }
-
-            return instance;
-        }
-
-        /// <summary>
         /// Configures refresh behavior for App Configuration.
         /// Note: App Configuration keys are case-sensitive. Ensure sentinel keys match exactly.
         /// Minimum refresh interval of 30 seconds is recommended to avoid throttling.
@@ -463,7 +399,7 @@ namespace ClearTools.Extensions
         /// to use cached configuration values. This is the recommended behavior for production resilience.
         /// </remarks>
         private static void ConfigureRefresh(
-            AzureAppConfigurationOptions options, 
+            AzureAppConfigurationOptions options,
             AppConfigurationRefreshOptions refreshOptions)
         {
             if (refreshOptions.SentinelKeys != null && refreshOptions.SentinelKeys.Length > 0)
@@ -532,9 +468,9 @@ namespace ClearTools.Extensions
         /// Sets a feature flag value on a property from App Configuration
         /// </summary>
         private static async Task SetFeatureFlagValue(
-            PropertyInfo property, 
-            object instance, 
-            ConfigurationClient client, 
+            PropertyInfo property,
+            object instance,
+            ConfigurationClient client,
             string flagName)
         {
             // Validate that the property is a boolean type
@@ -543,7 +479,8 @@ namespace ClearTools.Extensions
             {
                 throw new InvalidOperationException(
                     $"Property '{property.Name}' is decorated with [FeatureFlag] but is not of type bool or bool?. " +
-                    $"Feature flags can only be applied to boolean properties.");
+                    $"Feature flags can only be applied to boolean properties."
+                );
             }
 
             try
@@ -551,7 +488,7 @@ namespace ClearTools.Extensions
                 // Feature flags in App Configuration use a special key format
                 var featureFlagKey = $".appconfig.featureflag/{flagName}";
                 var flagSetting = await client.GetConfigurationSettingAsync(featureFlagKey);
-                
+
                 if (flagSetting?.Value?.Value != null)
                 {
                     // Parse the feature flag JSON to get the enabled state
@@ -574,9 +511,9 @@ namespace ClearTools.Extensions
         /// Sets a feature flag value from IConfiguration
         /// </summary>
         private static void SetFeatureFlagValueFromConfiguration(
-            PropertyInfo property, 
-            object instance, 
-            IConfiguration configuration, 
+            PropertyInfo property,
+            object instance,
+            IConfiguration configuration,
             string flagName)
         {
             // Validate that the property is a boolean type
@@ -629,7 +566,7 @@ namespace ClearTools.Extensions
             try
             {
                 var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                
+
                 if (targetType == typeof(string))
                 {
                     property.SetValue(instance, value);
