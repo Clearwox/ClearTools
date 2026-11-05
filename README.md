@@ -362,11 +362,10 @@ builder.AddAppConfigurationForWebApplication<AppSettings>(
     label: "Staging"
 );
 
-// Azure Functions - Direct client access with environment fallback
+// Azure Functions - One-time bulk snapshot in every environment
 hostBuilder.AddAppConfigurationForAzureFunctions<AppSettings>(
     appConfigEndpoint: new Uri("https://myapp.azconfig.io"),
-    out AppSettings functionSettings,
-    skipDevelopment: true          // Uses environment variables in dev
+    out AppSettings functionSettings
 );
 
 // Optional: Configuration refresh with sentinel keys
@@ -391,8 +390,17 @@ builder.AddAppConfigurationForWebApplication<AppSettings>(
 - ✅ Attribute-based feature flags with bool validation
 - ✅ Optional auto-refresh with sentinel keys
 - ✅ Managed Identity or connection string authentication
-- ✅ Development fallback to environment variables
+- ✅ Direct-client startup snapshot; existing shared settings classes and attributes are retained
 - ✅ Automatic type conversion and error handling
+
+**Direct-client loading (Azure Functions and `CreateSettingsFromAppConfiguration*`):**
+All keys for the exact requested label are fetched into a local lookup, then bound to the existing settings type. No settings class or attribute changes are required. A single-page response needs one HTTP request; larger results require one request per continuation page, and SDK retries can add requests. This is a startup snapshot per invocation, with no background polling or automatic refresh in the direct-client path.
+
+Omitting `label` (or passing an empty label) selects only unlabelled settings. For compatibility, `[FeatureFlag]` properties always read unlabelled `.appconfig.featureflag/` entries independently of `label` and `keyFilter`. A named-label load with feature flags therefore needs a second paged query for unlabelled flags. Key filters retain their existing case-insensitive exact/prefix matching during local binding; the selected label is fetched in full. Key lookup itself remains case-sensitive. Missing values keep property defaults; invalid conversions, denied access, and failed pages fail the load.
+
+The web application provider path and its refresh options are unchanged.
+
+Run the tests with `dotnet test src/ClearTools.sln -c Release`. PR validation runs the full suite on Windows because the image utility tests require Windows. Snapshot tests use synthetic HTTP responses through the Azure SDK and do not contact Azure or require credentials.
 
 ### Key Vault Integration (`KeyVaultExtensions`)
 
