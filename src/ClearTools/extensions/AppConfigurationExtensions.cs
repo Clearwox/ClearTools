@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -301,7 +302,7 @@ namespace ClearTools.Extensions
         /// <param name="label">Optional label filter for configuration keys</param>
         /// <param name="keyFilter">Optional key filter pattern</param>
         /// <returns>A populated instance of type T with values from App Configuration</returns>
-        private static async Task<T> CreateSettings<T>(
+        internal static async Task<T> CreateSettings<T>(
             ConfigurationClient configClient,
             string? label = null,
             string? keyFilter = null)
@@ -309,48 +310,66 @@ namespace ClearTools.Extensions
         {
             var instance = new T();
             var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite);
+                .Where(p => p.CanWrite).ToArray();
+            var flags = properties.Where(p => p.GetCustomAttribute<FeatureFlagAttribute>() != null).ToArray();
+            foreach (var property in flags)
+            {
+                var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                if (type != typeof(bool))
+                    throw new InvalidOperationException(
+                        $"Property '{property.Name}' is decorated with [FeatureFlag] but is not of type bool or bool?. " +
+                        "Feature flags can only be applied to boolean properties.");
+            }
+
+            // Filter locally to preserve the existing case-insensitive keyFilter contract.
+            var settings = await LoadSnapshot(configClient, label, "*").ConfigureAwait(false);
+            // Feature flags historically use the null label, independent of label/keyFilter.
+            var featureFlags = string.IsNullOrEmpty(label) || flags.Length == 0
+                ? settings
+                : await LoadSnapshot(configClient, null, ".appconfig.featureflag/*").ConfigureAwait(false);
 
             foreach (var property in properties)
             {
-                // Check if this is a feature flag property
-                var featureFlagAttr = property.GetCustomAttribute<FeatureFlagAttribute>();
-                if (featureFlagAttr != null)
+                var flag = property.GetCustomAttribute<FeatureFlagAttribute>();
+                if (flag != null)
                 {
-                    await SetFeatureFlagValue(property, instance, configClient, featureFlagAttr.FlagName);
+                    if (featureFlags.TryGetValue($".appconfig.featureflag/{flag.FlagName}", out var flagValue)
+                        && flagValue != null)
+                        property.SetValue(instance, ParseFeatureFlagEnabled(flagValue));
                     continue;
                 }
 
-                // Regular configuration key
-                var configKey = GetAppConfigurationKey(property);
-
-                // Apply key filter if specified
-                if (!string.IsNullOrEmpty(keyFilter) && !IsKeyMatchingFilter(configKey, keyFilter))
-                {
+                var key = GetAppConfigurationKey(property);
+                if (!string.IsNullOrEmpty(keyFilter) && !IsKeyMatchingFilter(key, keyFilter))
                     continue;
-                }
-
-                try
-                {
-                    var configSetting = await configClient.GetConfigurationSettingAsync(configKey, label);
-                    if (configSetting?.Value?.Value != null)
-                    {
-                        SetPropertyValue(property, instance, configSetting.Value.Value);
-                    }
-                }
-                catch (Azure.RequestFailedException ex) when (ex.Status == 404)
-                {
-                    // Configuration setting not found - skip this property
-                    continue;
-                }
-                catch (Azure.RequestFailedException ex) when (ex.Status == 401 || ex.Status == 403)
-                {
-                    throw new UnauthorizedAccessException(
-                        $"Access denied to App Configuration key '{configKey}'. Check your credentials and App Configuration permissions.", ex);
-                }
+                if (settings.TryGetValue(key, out var value) && value != null)
+                    SetPropertyValue(property, instance, value);
             }
-
             return instance;
+        }
+
+        private static async Task<Dictionary<string, string?>> LoadSnapshot(
+            ConfigurationClient client, string? label, string keyFilter)
+        {
+            // An omitted selector label means ALL labels. Escape named labels for exact matching.
+            var selector = new SettingSelector
+            {
+                KeyFilter = keyFilter,
+                LabelFilter = string.IsNullOrEmpty(label) ? "\0" : label!
+                    .Replace("\\", "\\\\").Replace("*", "\\*").Replace(",", "\\,")
+            };
+            var snapshot = new Dictionary<string, string?>(StringComparer.Ordinal);
+            try
+            {
+                await foreach (var setting in client.GetConfigurationSettingsAsync(selector).ConfigureAwait(false))
+                    snapshot[setting.Key] = setting.Value;
+            }
+            catch (Azure.RequestFailedException ex) when (ex.Status == 401 || ex.Status == 403)
+            {
+                throw new UnauthorizedAccessException(
+                    "Access denied to App Configuration. Check your credentials and App Configuration permissions.", ex);
+            }
+            return snapshot;
         }
 
         /// <summary>
@@ -462,49 +481,6 @@ namespace ClearTools.Extensions
             }
 
             return key.Equals(filter, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Sets a feature flag value on a property from App Configuration
-        /// </summary>
-        private static async Task SetFeatureFlagValue(
-            PropertyInfo property,
-            object instance,
-            ConfigurationClient client,
-            string flagName)
-        {
-            // Validate that the property is a boolean type
-            var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-            if (propertyType != typeof(bool))
-            {
-                throw new InvalidOperationException(
-                    $"Property '{property.Name}' is decorated with [FeatureFlag] but is not of type bool or bool?. " +
-                    $"Feature flags can only be applied to boolean properties."
-                );
-            }
-
-            try
-            {
-                // Feature flags in App Configuration use a special key format
-                var featureFlagKey = $".appconfig.featureflag/{flagName}";
-                var flagSetting = await client.GetConfigurationSettingAsync(featureFlagKey);
-
-                if (flagSetting?.Value?.Value != null)
-                {
-                    // Parse the feature flag JSON to get the enabled state
-                    var enabled = ParseFeatureFlagEnabled(flagSetting.Value.Value);
-                    property.SetValue(instance, enabled);
-                }
-            }
-            catch (Azure.RequestFailedException ex) when (ex.Status == 404)
-            {
-                // Feature flag not found - skip this property
-            }
-            catch (Azure.RequestFailedException ex) when (ex.Status == 401 || ex.Status == 403)
-            {
-                throw new UnauthorizedAccessException(
-                    $"Access denied to feature flag '{flagName}'. Check your credentials and App Configuration permissions.", ex);
-            }
         }
 
         /// <summary>

@@ -99,7 +99,7 @@ public class AppConfigurationExtensionsTests
     }
 
     [Fact]
-    public void AddAppConfigurationForWebApplication_WithDevelopmentEnvironment_ShouldSkipAppConfiguration()
+    public void AddAppConfigurationForWebApplication_InDevelopment_RegistersSettings()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -126,50 +126,23 @@ public class AppConfigurationExtensionsTests
         Assert.NotNull(registeredSettings);
     }
 
-    [Fact]
-    public void AddAppConfigurationForAzureFunctions_WithDevelopmentEnvironment_ShouldUseEnvironmentVariables()
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    public void AzureFunctions_InvalidConnectionStringFailsWithoutRegisteringDefaults(string environment)
     {
-        // Arrange
         var services = new ServiceCollection();
-        var mockConfiguration = new Mock<IConfigurationManager>();
-        var mockEnvironment = new Mock<IHostEnvironment>();
-        mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
+        var hostEnvironment = new Mock<IHostEnvironment>();
+        hostEnvironment.Setup(x => x.EnvironmentName).Returns(environment);
+        var builder = new Mock<IHostApplicationBuilder>();
+        builder.Setup(x => x.Services).Returns(services);
+        builder.Setup(x => x.Environment).Returns(hostEnvironment.Object);
 
-        var mockBuilder = new Mock<IHostApplicationBuilder>();
-        mockBuilder.Setup(x => x.Services).Returns(services);
-        mockBuilder.Setup(x => x.Configuration).Returns(mockConfiguration.Object);
-        mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
-
-        try
-        {
-            // Set environment variables for testing
-            Environment.SetEnvironmentVariable("DatabaseConnectionString", "test-connection");
-            Environment.SetEnvironmentVariable("api-key", "test-api-key");
-            Environment.SetEnvironmentVariable("MaxRetryCount", "5");
-            Environment.SetEnvironmentVariable("EnableLogging", "true");
-
-            // Act
-            mockBuilder.Object.AddAppConfigurationForAzureFunctions<TestSettings>(
-                "https://test.azconfig.io",
-                out var settings);
-
-            // Assert
-            Assert.NotNull(settings);
-            Assert.Equal("test-connection", settings.DatabaseConnectionString);
-            Assert.Equal("test-api-key", settings.ApiKey);
-            Assert.Equal(5, settings.MaxRetryCount);
-            Assert.True(settings.EnableLogging);
-        }
-        finally
-        {
-            // Cleanup
-            Environment.SetEnvironmentVariable("DatabaseConnectionString", null);
-            Environment.SetEnvironmentVariable("api-key", null);
-            Environment.SetEnvironmentVariable("MaxRetryCount", null);
-            Environment.SetEnvironmentVariable("EnableLogging", null);
-        }
+        // Development must not silently bypass Azure configuration, as removed in 3.6.1.
+        Assert.Throws<InvalidOperationException>(() =>
+            builder.Object.AddAppConfigurationForAzureFunctions<TestSettings>("invalid", out _));
+        Assert.Empty(services);
     }
-
     [Fact]
     public void CreateSettings_FromIConfiguration_ShouldMapProperties()
     {
@@ -414,45 +387,13 @@ public class AppConfigurationExtensionsTests
     }
 
     [Fact]
-    public void CreateSettingsFromEnvironment_WithFeatureFlags_ShouldMapCorrectly()
+    public async Task DirectFactories_InvalidConnectionStringFailInSyncAndAsyncPaths()
     {
-        try
-        {
-            // Arrange
-            Environment.SetEnvironmentVariable("DatabaseConnectionString", "env-connection");
-            Environment.SetEnvironmentVariable("enable-new-ui", "true");
-            Environment.SetEnvironmentVariable("beta-features", "false");
-
-            var services = new ServiceCollection();
-            var mockConfiguration = new Mock<IConfigurationManager>();
-            var mockEnvironment = new Mock<IHostEnvironment>();
-            mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
-
-            var mockBuilder = new Mock<IHostApplicationBuilder>();
-            mockBuilder.Setup(x => x.Services).Returns(services);
-            mockBuilder.Setup(x => x.Configuration).Returns(mockConfiguration.Object);
-            mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
-
-            // Act
-            mockBuilder.Object.AddAppConfigurationForAzureFunctions<TestSettings>(
-                "https://test.azconfig.io",
-                out var settings);
-
-            // Assert
-            Assert.NotNull(settings);
-            Assert.Equal("env-connection", settings.DatabaseConnectionString);
-            Assert.True(settings.NewUiEnabled);
-            Assert.False(settings.BetaFeaturesEnabled);
-        }
-        finally
-        {
-            // Cleanup
-            Environment.SetEnvironmentVariable("DatabaseConnectionString", null);
-            Environment.SetEnvironmentVariable("enable-new-ui", null);
-            Environment.SetEnvironmentVariable("beta-features", null);
-        }
+        Assert.Throws<InvalidOperationException>(() =>
+            AppConfigurationExtensions.CreateSettingsFromAppConfiguration<TestSettings>("invalid"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            AppConfigurationExtensions.CreateSettingsFromAppConfigurationAsync<TestSettings>("invalid"));
     }
-
     [Fact]
     public void AddAppConfigurationForWebApplication_WithConnectionString_ShouldReturnBuilder()
     {
@@ -478,29 +419,16 @@ public class AppConfigurationExtensionsTests
     }
 
     [Fact]
-    public void AddAppConfigurationForAzureFunctions_WithConnectionString_ShouldReturnBuilder()
+    public void AzureFunctions_InvalidConnectionSecretFailsWithoutRegisteringDefaults()
     {
-        // Arrange
         var services = new ServiceCollection();
-        var mockConfiguration = new Mock<IConfigurationManager>();
-        var mockEnvironment = new Mock<IHostEnvironment>();
-        mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
-
-        var mockBuilder = new Mock<IHostApplicationBuilder>();
-        mockBuilder.Setup(x => x.Services).Returns(services);
-        mockBuilder.Setup(x => x.Configuration).Returns(mockConfiguration.Object);
-        mockBuilder.Setup(x => x.Environment).Returns(mockEnvironment.Object);
-
-        // Act
-        var result = mockBuilder.Object.AddAppConfigurationForAzureFunctions<EmptySettings>(
-            "Endpoint=https://test.azconfig.io;Id=test;Secret=secret",
-            out var settings);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Same(mockBuilder.Object, result);
+        var builder = new Mock<IHostApplicationBuilder>();
+        builder.Setup(x => x.Services).Returns(services);
+        Assert.Throws<InvalidOperationException>(() =>
+            builder.Object.AddAppConfigurationForAzureFunctions<EmptySettings>(
+                "Endpoint=https://test.azconfig.io;Id=test;Secret=not-base64", out _));
+        Assert.Empty(services);
     }
-
     [Fact]
     public void RefreshOptions_WithNullErrorHandler_ShouldBeSilent()
     {
