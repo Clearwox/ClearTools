@@ -482,13 +482,13 @@ namespace ClearTools.Tests
         }
 
         [Fact]
-        public void AddConnectionString_NullConnectionString_ThrowsArgumentNullException()
+        public void AddConnectionString_NullConnectionString_ThrowsArgumentException()
         {
             // Arrange
             var services = new ServiceCollection();
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
+            Assert.Throws<ArgumentException>(() =>
                 services.AddConnectionString<TestConnectionString>(null!));
         }
 

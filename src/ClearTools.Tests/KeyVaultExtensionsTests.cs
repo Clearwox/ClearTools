@@ -125,26 +125,27 @@ public class KeyVaultExtensionsTests
         // Arrange
         var mockSecretClient = new Mock<SecretClient>();
 
+        // Match the current SDK overload (name, version, outContentType, cancellationToken).
         // Setup mock responses for different secrets
         var connectionStringSecret = CreateMockSecret("ConnectionString", "Server=test;Database=MyDB;");
         var apiKeySecret = CreateMockSecret("api-key", "secret-api-key");
         var retryCountSecret = CreateMockSecret("MaxRetryCount", "3");
         var loggingSecret = CreateMockSecret("EnableLogging", "false");
 
-        mockSecretClient.Setup(x => x.GetSecretAsync("ConnectionString", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("ConnectionString", null, null, default))
             .ReturnsAsync(Response.FromValue(connectionStringSecret, Mock.Of<Response>()));
         
-        mockSecretClient.Setup(x => x.GetSecretAsync("api-key", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("api-key", null, null, default))
             .ReturnsAsync(Response.FromValue(apiKeySecret, Mock.Of<Response>()));
         
-        mockSecretClient.Setup(x => x.GetSecretAsync("MaxRetryCount", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("MaxRetryCount", null, null, default))
             .ReturnsAsync(Response.FromValue(retryCountSecret, Mock.Of<Response>()));
         
-        mockSecretClient.Setup(x => x.GetSecretAsync("EnableLogging", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("EnableLogging", null, null, default))
             .ReturnsAsync(Response.FromValue(loggingSecret, Mock.Of<Response>()));
 
         // Setup 404 for OptionalValue to test missing secret handling
-        mockSecretClient.Setup(x => x.GetSecretAsync("OptionalValue", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("OptionalValue", null, null, default))
             .ThrowsAsync(new RequestFailedException(404, "Secret not found"));
 
         // Use reflection to call private method for testing
@@ -174,7 +175,7 @@ public class KeyVaultExtensionsTests
         // Arrange
         var mockSecretClient = new Mock<SecretClient>();
         
-        mockSecretClient.Setup(x => x.GetSecretAsync("ConnectionString", null, default))
+        mockSecretClient.Setup(x => x.GetSecretAsync("ConnectionString", null, null, default))
             .ThrowsAsync(new RequestFailedException(403, "Forbidden"));
 
         // Use reflection to call private method

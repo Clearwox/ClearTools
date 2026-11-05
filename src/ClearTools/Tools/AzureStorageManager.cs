@@ -23,7 +23,7 @@ namespace Clear.Tools
         {
             var blobContainer = CreateCloudBlobContainer(connectionString, containerName);
             blobContainer.CreateIfNotExists();
-            return blobContainer.GetBlobs(prefix: folder).Any();
+            return blobContainer.GetBlobs(BlobTraits.None, BlobStates.None, prefix: folder, cancellationToken: default).Any();
         }
 
         #region upload to azure
