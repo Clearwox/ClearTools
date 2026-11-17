@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
@@ -7,81 +8,131 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 
-namespace Clear.Tools {
-
-public sealed class PrivateBlobStore
+namespace Clear.Tools
 {
-    private readonly BlobContainerClient container;
-
-    public PrivateBlobStore(BlobContainerClient container) => this.container = container;
-
-    public async Task<byte[]?> ReadAsync(string blobName, CancellationToken cancellationToken)
+    /// <summary>A renewable lease. Protected operations must observe OwnershipLost.</summary>
+    public interface IBlobLease : IAsyncDisposable
     {
-        await container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
-        var properties = await container.GetPropertiesAsync(cancellationToken: cancellationToken);
-        if (properties.Value.PublicAccess != PublicAccessType.None)
-            throw new InvalidOperationException("The blob container must be private.");
-        try { return (await container.GetBlobClient(blobName).DownloadContentAsync(cancellationToken)).Value.Content.ToArray(); }
-        catch (RequestFailedException ex) when (ex.Status == 404) { return null; }
+        CancellationToken OwnershipLost { get; }
     }
 
-    public async Task WriteAsync(string blobName, byte[] bytes, CancellationToken cancellationToken)
+    public sealed class PrivateBlobStore
     {
-        using var stream = new MemoryStream(bytes, writable: false);
-        await container.GetBlobClient(blobName).UploadAsync(stream,
-            new BlobUploadOptions { Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All } }, cancellationToken);
-    }
+        private readonly BlobContainerClient _container;
 
-    public async Task<IAsyncDisposable> AcquireAsync(string lockBlobName, CancellationToken cancellationToken)
-    {
-        var blob = container.GetBlobClient(lockBlobName);
-        try
+        public PrivateBlobStore(BlobContainerClient container) => _container = container;
+
+        /// <summary>Explicit writer initialization. Reading existing blobs requires no create permission.</summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            using var empty = new MemoryStream(Array.Empty<byte>());
-            await blob.UploadAsync(empty, new BlobUploadOptions { Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All } }, cancellationToken);
+            await _container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
+            await EnsurePrivateAsync(cancellationToken);
         }
-        catch (RequestFailedException ex) when (ex.Status == 409 || ex.Status == 412) { }
 
-        var lease = blob.GetBlobLeaseClient();
-        for (var attempt = 0; attempt < 30; attempt++)
+        private async Task EnsurePrivateAsync(CancellationToken cancellationToken)
+        {
+            var properties = await _container.GetPropertiesAsync(cancellationToken: cancellationToken);
+            if (properties.Value.PublicAccess != PublicAccessType.None)
+                throw new InvalidOperationException("The blob container must be private.");
+        }
+
+        public async Task<byte[]?> ReadAsync(string blobName, CancellationToken cancellationToken)
         {
             try
             {
-                await lease.AcquireAsync(TimeSpan.FromSeconds(60), cancellationToken: cancellationToken);
-                return new RenewableLease(lease);
+                await EnsurePrivateAsync(cancellationToken);
+                var response = await _container.GetBlobClient(blobName).DownloadContentAsync(cancellationToken);
+                return response.Value.Content.ToArray();
             }
-            catch (RequestFailedException ex) when (ex.Status == 409)
-            {
-                if (attempt == 29) break;
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-            }
+            catch (RequestFailedException ex) when (ex.Status == 404) { return null; }
         }
-        throw new TimeoutException("Could not acquire the blob lease before the retry limit.");
+
+        public async Task WriteAsync(string blobName, byte[] bytes, CancellationToken cancellationToken)
+        {
+            await EnsurePrivateAsync(cancellationToken);
+            using var stream = new MemoryStream(bytes, writable: false);
+            await _container.GetBlobClient(blobName).UploadAsync(stream,
+                new BlobUploadOptions { Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All } }, cancellationToken);
+        }
+
+        public async Task<IBlobLease> AcquireAsync(string lockBlobName, CancellationToken cancellationToken)
+        {
+            await InitializeAsync(cancellationToken);
+            var blob = _container.GetBlobClient(lockBlobName);
+            try
+            {
+                using var empty = new MemoryStream(Array.Empty<byte>());
+                await blob.UploadAsync(empty, new BlobUploadOptions
+                {
+                    Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All }
+                }, cancellationToken);
+            }
+            catch (RequestFailedException ex) when (ex.Status == 409 || ex.Status == 412) { }
+
+            var lease = blob.GetBlobLeaseClient();
+            for (var attempt = 0; attempt < 30; attempt++)
+            {
+                try
+                {
+                    using var acquisition = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    acquisition.CancelAfter(TimeSpan.FromSeconds(45));
+                    var elapsed = Stopwatch.StartNew();
+                    await lease.AcquireAsync(TimeSpan.FromSeconds(60), cancellationToken: acquisition.Token);
+                    acquisition.Token.ThrowIfCancellationRequested();
+                    var remaining = TimeSpan.FromSeconds(45) - elapsed.Elapsed;
+                    if (remaining <= TimeSpan.Zero) throw new TimeoutException("Lease acquisition exceeded its ownership window.");
+                    return new RenewableBlobLease(lease, TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(45), remaining);
+                }
+                catch (RequestFailedException ex) when (ex.Status == 409)
+                {
+                    if (attempt == 29) break;
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                }
+            }
+            throw new TimeoutException("Could not acquire the blob lease before the retry limit.");
+        }
     }
 
-    private sealed class RenewableLease : IAsyncDisposable
+    internal sealed class RenewableBlobLease : IBlobLease
     {
         private readonly BlobLeaseClient _lease;
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
+        private readonly CancellationTokenSource _lost = new CancellationTokenSource();
         private readonly Task _renewal;
 
-        public RenewableLease(BlobLeaseClient lease)
+        public CancellationToken OwnershipLost { get; }
+
+        internal RenewableBlobLease(BlobLeaseClient lease, TimeSpan renewalInterval, TimeSpan ownershipWindow, TimeSpan? initialWindow = null)
         {
             _lease = lease;
-            _renewal = RenewAsync();
+            OwnershipLost = _lost.Token;
+            // Fail closed before the server's 60-second lease expires, even if renewal hangs.
+            _lost.CancelAfter(initialWindow ?? ownershipWindow);
+            _renewal = RenewAsync(renewalInterval, ownershipWindow);
         }
 
-        private async Task RenewAsync()
+        private async Task RenewAsync(TimeSpan interval, TimeSpan ownershipWindow)
         {
+            using var renewalToken = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, OwnershipLost);
             try
             {
                 while (true)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(30), _stop.Token);
-                    await _lease.RenewAsync(cancellationToken: _stop.Token);
+                    await Task.Delay(interval, renewalToken.Token);
+                    var elapsed = Stopwatch.StartNew();
+                    await _lease.RenewAsync(cancellationToken: renewalToken.Token);
+                    renewalToken.Token.ThrowIfCancellationRequested();
+                    var remaining = ownershipWindow - elapsed.Elapsed;
+                    if (remaining <= TimeSpan.Zero)
+                    {
+                        _lost.Cancel();
+                        return;
+                    }
+                    _lost.CancelAfter(remaining);
                 }
             }
             catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
+            catch (Exception) { _lost.Cancel(); }
         }
 
         public async ValueTask DisposeAsync()
@@ -90,11 +141,15 @@ public sealed class PrivateBlobStore
             try { await _renewal; }
             finally
             {
-                try { await _lease.ReleaseAsync(); }
+                using var releaseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                try { await _lease.ReleaseAsync(cancellationToken: releaseTimeout.Token); }
                 catch (RequestFailedException ex) when (ex.Status == 404 || ex.Status == 409 || ex.Status == 412) { }
-                _stop.Dispose();
+                finally
+                {
+                    _lost.Dispose();
+                    _stop.Dispose();
+                }
             }
         }
     }
-}
 }
