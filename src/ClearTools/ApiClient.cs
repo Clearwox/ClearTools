@@ -171,8 +171,7 @@ namespace Clear
     public class ApiClient : IApiClient
     {
         private readonly HttpClient _http;
-        private HttpResponseMessage? _lastResponse;
-        private string _lastResponseString = string.Empty;
+        private ResponseSnapshot? _lastResponse;
 
         /// <summary>
         /// Initializes a new instance of the ApiClient class.
@@ -183,14 +182,15 @@ namespace Clear
         }
 
         /// <summary>
-        /// Gets the last response string.
+        /// Gets the last completed response for legacy diagnostics. This is not request-specific.
         /// </summary>
-        public HttpResponseMessage? LastResponse => _lastResponse;
+        public HttpResponseMessage? LastResponse => Volatile.Read(ref _lastResponse)?.Response;
 
         /// <summary>
-        /// Gets the last response string.
+        /// Gets the last completed response body for legacy diagnostics. Concurrent callers
+        /// must use their returned result/response, not this property, for application decisions.
         /// </summary>
-        public string LastResponseString => _lastResponseString;
+        public string LastResponseString => Volatile.Read(ref _lastResponse)?.Body ?? string.Empty;
 
         #region get data
 
@@ -217,17 +217,8 @@ namespace Clear
         /// </summary>
         public async Task<TEntity> GetAsync<TEntity>(string requestUrl, string token, Dictionary<string, string> headers, CancellationToken cancellationToken = default)
         {
-            SetHeaders(headers, token);
-
-            var response = await _http.GetAsync(requestUrl,
-                HttpCompletionOption.ResponseHeadersRead, cancellationToken
-            );
-
-            await SetLastResponse(response);
-
-            response.EnsureSuccessStatusCode();
-
-            return Deserialize<TEntity>(_lastResponseString);
+            var result = await SendAsync(HttpMethod.Get, requestUrl, token, headers, null, true, cancellationToken);
+            return Deserialize<TEntity>(result.Body);
         }
 
         #endregion
@@ -257,18 +248,9 @@ namespace Clear
         /// </summary>
         public async Task<HttpResponseMessage> PostAsync<TEntity>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            SetHeaders(headers, token);
-
-            var response = await _http.PostAsync(requestUrl, CreateHttpContent(content), cancellationToken);
-
-            await SetLastResponse(response);
-
-            if (ensureSuccess)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-
-            return response;
+            var result = await SendAsync(HttpMethod.Post, requestUrl, token, headers,
+                CreateHttpContent(content), ensureSuccess, cancellationToken);
+            return result.Response;
         }
 
         // ========
@@ -296,8 +278,9 @@ namespace Clear
         /// </summary>
         public async Task<TResult> PostAsync<TEntity, TResult>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            await PostAsync(requestUrl, content, token, headers, ensureSuccess, cancellationToken);
-            return Deserialize<TResult>(_lastResponseString);
+            var result = await SendAsync(HttpMethod.Post, requestUrl, token, headers,
+                CreateHttpContent(content), ensureSuccess, cancellationToken);
+            return Deserialize<TResult>(result.Body);
         }
 
         // ========
@@ -329,20 +312,9 @@ namespace Clear
         /// </summary>
         public async Task<HttpResponseMessage> PutAsync<TEntity>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            SetHeaders(headers, token);
-
-            var response = await _http.PutAsync(
-                requestUrl, CreateHttpContent(content), cancellationToken
-            );
-
-            if (ensureSuccess)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-
-            await SetLastResponse(response);
-
-            return response;
+            var result = await SendAsync(HttpMethod.Put, requestUrl, token, headers,
+                CreateHttpContent(content), ensureSuccess, cancellationToken);
+            return result.Response;
         }
 
         // ========
@@ -370,8 +342,9 @@ namespace Clear
         /// </summary>
         public async Task<TResult> PutAsync<TEntity, TResult>(string requestUrl, TEntity content, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            await PutAsync(requestUrl, content, token, headers, ensureSuccess, cancellationToken);
-            return Deserialize<TResult>(_lastResponseString);
+            var result = await SendAsync(HttpMethod.Put, requestUrl, token, headers,
+                CreateHttpContent(content), ensureSuccess, cancellationToken);
+            return Deserialize<TResult>(result.Body);
         }
 
         #endregion
@@ -401,16 +374,7 @@ namespace Clear
         /// </summary>
         public async Task DeleteAsync(string requestUrl, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            SetHeaders(headers, token);
-
-            var response = await _http.DeleteAsync(requestUrl, cancellationToken);
-
-            if (ensureSuccess)
-            {
-                response.EnsureSuccessStatusCode();
-            }
-
-            await SetLastResponse(response);
+            await SendAsync(HttpMethod.Delete, requestUrl, token, headers, null, ensureSuccess, cancellationToken);
         }
 
         // =======
@@ -438,8 +402,8 @@ namespace Clear
         /// </summary>
         public async Task<TResult> DeleteWithResultAsync<TResult>(string requestUrl, string token, Dictionary<string, string> headers, bool ensureSuccess = true, CancellationToken cancellationToken = default)
         {
-            await DeleteAsync(requestUrl, token, headers, ensureSuccess, cancellationToken);
-            return Deserialize<TResult>(_lastResponseString); // set inside the DeleteAsync method
+            var result = await SendAsync(HttpMethod.Delete, requestUrl, token, headers, null, ensureSuccess, cancellationToken);
+            return Deserialize<TResult>(result.Body);
         }
 
         #endregion
@@ -494,42 +458,42 @@ namespace Clear
             DateFormatHandling = DateFormatHandling.MicrosoftDateFormat
         };
 
-        private void SetHeaders(Dictionary<string, string> headers, string token)
+        private async Task<ResponseSnapshot> SendAsync(HttpMethod method, string requestUrl,
+            string token, Dictionary<string, string> headers, HttpContent? content,
+            bool ensureSuccess, CancellationToken cancellationToken)
         {
-            if (!string.IsNullOrEmpty(token))
+            using var request = new HttpRequestMessage(method, requestUrl) { Content = content };
+            if (!string.IsNullOrWhiteSpace(token))
             {
-                AddToken(token);
+                request.Headers.Add("Authorization", $"Bearer {token}");
             }
-
-            if (headers?.Count > 0)
+            if (headers != null)
             {
-                AddHeaders(headers);
+                foreach (var header in headers)
+                {
+                    request.Headers.Remove(header.Key);
+                    request.Headers.Add(header.Key, header.Value);
+                }
             }
+            var response = await _http.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken);
+            var result = new ResponseSnapshot(response, await response.Content.ReadAsStringAsync());
+            Volatile.Write(ref _lastResponse, result);
+            if (ensureSuccess)
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            return result;
         }
 
-        /// <summary>
-        /// Adds the specified token to the HTTP headers.
-        /// </summary>
-        private void AddToken(string token)
+        private sealed class ResponseSnapshot
         {
-            if (string.IsNullOrWhiteSpace(token)) return;
-            AddHeaders(new Dictionary<string, string>
+            public ResponseSnapshot(HttpResponseMessage response, string body)
             {
-                { "Authorization", $"Bearer {token}" }
-            });
-        }
-
-        /// <summary>
-        /// Adds the specified headers to the HTTP headers.
-        /// </summary>
-        private void AddHeaders(Dictionary<string, string> headers)
-        {
-            if (headers == null) return;
-            foreach (var header in headers)
-            {
-                _http.DefaultRequestHeaders.Remove(header.Key);
-                _http.DefaultRequestHeaders.Add(header.Key, header.Value);
+                Response = response;
+                Body = body;
             }
+            public HttpResponseMessage Response { get; }
+            public string Body { get; }
         }
 
         /// <summary>
@@ -539,8 +503,8 @@ namespace Clear
         /// <returns></returns>
         public async Task SetLastResponse(HttpResponseMessage httpResponse)
         {
-            _lastResponse = httpResponse;
-            _lastResponseString = await httpResponse.Content.ReadAsStringAsync();
+            Volatile.Write(ref _lastResponse,
+                new ResponseSnapshot(httpResponse, await httpResponse.Content.ReadAsStringAsync()));
         }
 
         #endregion
