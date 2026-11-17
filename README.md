@@ -7,6 +7,19 @@ A comprehensive .NET Standard 2.1 utility library providing robust, production-r
 
 ## 🚀 Quick Start
 
+### Concurrent HTTP calls
+
+`Clear.ApiClient` attaches supplied credentials and headers to each request. The same client
+can be used concurrently without changing shared `HttpClient.DefaultRequestHeaders`, and
+typed results are deserialized from that request's response body.
+
+`LastResponse` and `LastResponseString` remain available as legacy diagnostics showing the
+last completed response. They do not identify a particular caller's response when requests
+overlap. Use the returned typed result or `HttpResponseMessage` for application decisions.
+For an expected error response that needs inspection, use a response-returning overload with
+`ensureSuccess: false`, inspect that response, and explicitly handle its status. Never log API
+keys or unredacted response bodies. The client does not automatically retry authentication failures.
+
 ### Installation
 
 ```bash
