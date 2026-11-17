@@ -12,6 +12,8 @@ A comprehensive .NET Standard 2.1 utility library providing robust, production-r
 `Clear.ApiClient` attaches supplied credentials and headers to each request. The same client
 can be used concurrently without changing shared `HttpClient.DefaultRequestHeaders`, and
 typed results are deserialized from that request's response body.
+Requests preserve the injected `HttpClient`'s configured HTTP version and version policy
+on runtimes that support those settings.
 
 `LastResponse` and `LastResponseString` remain available as legacy diagnostics showing the
 last completed response. They do not identify a particular caller's response when requests

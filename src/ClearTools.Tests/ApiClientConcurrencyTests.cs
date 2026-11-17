@@ -7,6 +7,44 @@ namespace ClearTools.Tests;
 
 public sealed class ApiClientConcurrencyTests
 {
+    public static IEnumerable<object[]> HttpVersionDefaults()
+    {
+        foreach (var method in new[] { "GET", "POST", "PUT", "DELETE" })
+        {
+            yield return new object[] { method, 1, 1, HttpVersionPolicy.RequestVersionOrLower };
+            foreach (var major in new[] { 2, 3 })
+                foreach (var policy in Enum.GetValues<HttpVersionPolicy>())
+                    yield return new object[] { method, major, 0, policy };
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(HttpVersionDefaults))]
+    public async Task Requests_PreserveConfiguredHttpVersionDefaults(
+        string method, int major, int minor, HttpVersionPolicy policy)
+    {
+        var version = new Version(major, minor);
+        int sent = 0;
+        using var http = new HttpClient(new Handler(request =>
+        {
+            Assert.Equal(method, request.Method.Method);
+            Assert.Equal(version, request.Version);
+            Assert.Equal(policy, request.VersionPolicy);
+            sent++;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = new StringContent("{\"Id\":\"ok\"}") };
+        }));
+        var client = new ApiClient(http);
+        // Match HttpClient helpers: use settings at send time, even if configured
+        // after ApiClient construction but before the first request.
+        http.DefaultRequestVersion = version;
+        http.DefaultVersionPolicy = policy;
+
+        await Send(client, method, CancellationToken.None);
+
+        Assert.Equal(1, sent);
+    }
+
     [Fact]
     public async Task RequestCredentials_DoNotLeakToFollowingRequests()
     {
