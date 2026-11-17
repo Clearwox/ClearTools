@@ -1,8 +1,10 @@
 ﻿using Clear.Exceptions;
 using Clear.Models;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -170,6 +172,16 @@ namespace Clear
     /// </summary>
     public class ApiClient : IApiClient
     {
+        // These HttpClient defaults are not exposed by netstandard2.1. Read the
+        // public runtime properties when available, preserving compatibility
+        // with older runtimes and HttpClient's convenience-method behavior.
+        private static readonly PropertyInfo? DefaultRequestVersionProperty =
+            typeof(HttpClient).GetProperty("DefaultRequestVersion");
+        private static readonly PropertyInfo? DefaultVersionPolicyProperty =
+            typeof(HttpClient).GetProperty("DefaultVersionPolicy");
+        private static readonly PropertyInfo? RequestVersionPolicyProperty =
+            typeof(HttpRequestMessage).GetProperty("VersionPolicy");
+
         private readonly HttpClient _http;
         private ResponseSnapshot? _lastResponse;
 
@@ -463,6 +475,11 @@ namespace Clear
             bool ensureSuccess, CancellationToken cancellationToken)
         {
             using var request = new HttpRequestMessage(method, requestUrl) { Content = content };
+            if (DefaultRequestVersionProperty?.GetValue(_http) is Version version)
+                request.Version = version;
+            if (DefaultVersionPolicyProperty != null && RequestVersionPolicyProperty != null)
+                RequestVersionPolicyProperty.SetValue(request, DefaultVersionPolicyProperty.GetValue(_http));
+
             if (!string.IsNullOrWhiteSpace(token))
             {
                 request.Headers.Add("Authorization", $"Bearer {token}");

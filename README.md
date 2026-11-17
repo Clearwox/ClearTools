@@ -12,6 +12,8 @@ A comprehensive .NET Standard 2.1 utility library providing robust, production-r
 `Clear.ApiClient` attaches supplied credentials and headers to each request. The same client
 can be used concurrently without changing shared `HttpClient.DefaultRequestHeaders`, and
 typed results are deserialized from that request's response body.
+Requests preserve the injected `HttpClient`'s configured HTTP version and version policy
+on runtimes that support those settings.
 
 `LastResponse` and `LastResponseString` remain available as legacy diagnostics showing the
 last completed response. They do not identify a particular caller's response when requests
@@ -736,9 +738,11 @@ This repository includes a GitHub Actions workflow that manually publishes both 
 
 1. Go to the **Actions** tab in this repository.
 2. Select **"Publish NuGet Packages"** from the left sidebar.
-3. Click **"Run workflow"** → **"Run workflow"** to trigger a manual publish.
+3. Click **"Run workflow"**, select **`master`**, then click **"Run workflow"** to trigger a manual publish. Runs on other branches are skipped.
 
-The workflow will restore, build (Release), pack both projects, and push all `.nupkg` files to nuget.org, skipping any versions that are already published.
+The workflow runs on GitHub Actions. It restores, builds (Release), and runs the complete test suite on Windows before packing or publishing. Any build or test failure prevents publishing. It then packs both projects, retains the tested packages as a commit-labelled workflow artifact for seven days, and pushes them to nuget.org, skipping versions already published. Release runs are serialized and an active release is not cancelled by a new manual trigger.
+
+Merging a PR does not publish a package. Review and merge the package version changes first, then manually start this workflow when ready to release. Publishing a package does not update or deploy applications that consume it.
 
 ## 🤝 Contributing
 

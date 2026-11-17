@@ -7,9 +7,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: publish-nuget
+  cancel-in-progress: false
+
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    # The complete test suite includes Windows image-processing tests.
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout
@@ -21,16 +30,27 @@ jobs:
           dotnet-version: "9.0.x"
 
       - name: Restore
-        run: dotnet restore src/ClearTools.sln
+        run: dotnet restore src/ClearTools.sln --source https://api.nuget.org/v3/index.json
 
       - name: Build (Release)
-        run: dotnet build src/ClearTools.sln -c Release --no-restore
+        run: dotnet build src/ClearTools.sln -c Release --no-restore -p:GeneratePackageOnBuild=false
+
+      - name: Test (required before publishing)
+        run: dotnet test src/ClearTools.sln -c Release --no-build --no-restore
 
       - name: Pack ClearTools.Abstraction
         run: dotnet pack src/ClearTools.Abstraction/ClearTools.Abstraction.csproj -c Release --no-build -o ./artifacts
 
       - name: Pack ClearTools
         run: dotnet pack src/ClearTools/ClearTools.csproj -c Release --no-build -o ./artifacts
+
+      - name: Retain tested release packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ github.sha }}
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Validate NuGet API Key
         env:
